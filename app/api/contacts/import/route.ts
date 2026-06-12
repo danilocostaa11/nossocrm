@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
+import { isAllowedOrigin } from '@/lib/security/sameOrigin';
 import { detectCsvDelimiter, parseCsv, type CsvDelimiter } from '@/lib/utils/csv';
 import { normalizePhoneE164 } from '@/lib/phone';
 
@@ -105,6 +106,10 @@ function normalizeStage(v: string | undefined): string | undefined {
 
 export async function POST(req: Request) {
   try {
+    if (!isAllowedOrigin(req)) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
     const form = await req.formData();
     const file = form.get('file');
     const modeRaw = form.get('mode');
@@ -185,10 +190,35 @@ export async function POST(req: Request) {
 
     const supabase = await createClient();
 
+    // Defense-in-depth: exige usuário autenticado com organização e escopa todas
+    // as operações por organization_id (além do RLS).
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('organization_id, role')
+      .eq('id', user.id)
+      .single();
+
+    const organizationId = profile?.organization_id as string | undefined;
+    if (!organizationId) {
+      return NextResponse.json({ error: 'Profile sem organização' }, { status: 403 });
+    }
+
+    if (profile?.role !== 'admin') {
+      return NextResponse.json({ error: 'Apenas administradores podem importar contatos.' }, { status: 403 });
+    }
+
     // Companies: preload and optionally create missing ones
     const { data: companies, error: companiesError } = await supabase
       .from('crm_companies')
       .select('id,name')
+      .eq('organization_id', organizationId)
       .is('deleted_at', null);
 
     if (companiesError) {
@@ -211,7 +241,7 @@ export async function POST(req: Request) {
     }
 
     if (createCompanies && missingCompanies.size) {
-      const payload = Array.from(missingCompanies).map(name => ({ name }));
+      const payload = Array.from(missingCompanies).map(name => ({ name, organization_id: organizationId }));
       const { data: createdCompanies, error: createCompaniesError } = await supabase
         .from('crm_companies')
         .insert(payload)
@@ -242,6 +272,7 @@ export async function POST(req: Request) {
         const { data: existing, error: existingError } = await supabase
           .from('contacts')
           .select('id,email')
+          .eq('organization_id', organizationId)
           .in('email', chunk)
           .is('deleted_at', null);
 
@@ -287,6 +318,7 @@ export async function POST(req: Request) {
       const companyId = companyName ? companyIdByName.get(normalizeHeader(companyName)) : undefined;
 
       const base = {
+        organization_id: organizationId,
         name: p.data.name || '',
         email: p.data.email || null,
         phone: phoneE164 || null,
@@ -321,6 +353,7 @@ export async function POST(req: Request) {
         const { error: updateError } = await supabase
           .from('contacts')
           .update(base)
+          .eq('organization_id', organizationId)
           .eq('id', id);
 
         if (updateError) {

@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Phone, Users, Mail, CheckSquare } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Phone, Users, Mail, CheckSquare, Clock } from 'lucide-react';
 import { Activity, Deal } from '@/types';
 
 interface ActivitiesCalendarProps {
@@ -114,10 +114,25 @@ export const ActivitiesCalendar: React.FC<ActivitiesCalendarProps> = ({
         return map;
     }, [deals]);
 
+    const weekActivities = useMemo(() => {
+        const start = new Date(weekStart);
+        start.setHours(0, 0, 0, 0);
+        const end = new Date(weekStart);
+        end.setDate(end.getDate() + 7);
+        end.setHours(0, 0, 0, 0);
+
+        return activities
+            .filter((a) => {
+                const d = new Date(a.date);
+                return d >= start && d < end;
+            })
+            .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    }, [activities, weekStart]);
+
     return (
         <div className="bg-white dark:bg-dark-card rounded-2xl border border-slate-200 dark:border-white/5 overflow-hidden shadow-xl">
             {/* Header */}
-            <div className="p-6 border-b border-slate-200 dark:border-white/10 flex justify-between items-center bg-gradient-to-r from-slate-50 to-slate-100 dark:from-slate-800/50 dark:to-slate-900/50">
+            <div className="p-4 sm:p-6 border-b border-slate-200 dark:border-white/10 flex flex-col gap-4 sm:flex-row sm:justify-between sm:items-center bg-gradient-to-r from-slate-50 to-slate-100 dark:from-slate-800/50 dark:to-slate-900/50">
                 <div className="flex items-center gap-4">
                     <h2 className="font-bold text-2xl text-slate-900 dark:text-white font-display">
                         {weekStart.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
@@ -131,18 +146,68 @@ export const ActivitiesCalendar: React.FC<ActivitiesCalendarProps> = ({
                     </button>
                 </div>
                 <div className="flex gap-2">
-                    <button onClick={prevWeek} className="p-3 hover:bg-slate-200 dark:hover:bg-white/10 rounded-xl transition-all hover:scale-110">
-                        <ChevronLeft size={20} className="text-slate-600 dark:text-slate-400" />
+                    <button
+                        onClick={prevWeek}
+                        aria-label="Semana anterior"
+                        className="p-3 hover:bg-slate-200 dark:hover:bg-white/10 rounded-xl transition-all hover:scale-110"
+                    >
+                        <ChevronLeft size={20} className="text-slate-600 dark:text-slate-400" aria-hidden="true" />
                     </button>
-                    <button onClick={nextWeek} className="p-3 hover:bg-slate-200 dark:hover:bg-white/10 rounded-xl transition-all hover:scale-110">
-                        <ChevronRight size={20} className="text-slate-600 dark:text-slate-400" />
+                    <button
+                        onClick={nextWeek}
+                        aria-label="Próxima semana"
+                        className="p-3 hover:bg-slate-200 dark:hover:bg-white/10 rounded-xl transition-all hover:scale-110"
+                    >
+                        <ChevronRight size={20} className="text-slate-600 dark:text-slate-400" aria-hidden="true" />
                     </button>
                 </div>
             </div>
 
-            {/* Calendar Grid */}
-            <div className="overflow-auto max-h-[650px]">
-                <div className="min-w-[900px]">
+            {/* Mobile: lista da semana (sem scroll horizontal) */}
+            <div className="md:hidden p-4 space-y-3 max-h-[650px] overflow-y-auto">
+                {weekActivities.length === 0 ? (
+                    <p className="text-sm text-slate-500 dark:text-slate-400 text-center py-8">
+                        Nenhuma atividade nesta semana.
+                    </p>
+                ) : (
+                    weekActivities.map((activity) => (
+                        <div
+                            key={activity.id}
+                            className={`rounded-xl border border-slate-200 dark:border-white/10 p-3 bg-slate-50 dark:bg-white/5 ${activity.completed ? 'opacity-60' : ''}`}
+                        >
+                            <div className="flex items-start gap-3">
+                                <div className={`p-2 rounded-lg shrink-0 ${getActivityGradient(activity.type)}`}>
+                                    {getActivityIcon(activity.type)}
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                    <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                                        <Clock size={12} />
+                                        {new Date(activity.date).toLocaleString('pt-BR', {
+                                            weekday: 'short',
+                                            day: '2-digit',
+                                            month: 'short',
+                                            hour: '2-digit',
+                                            minute: '2-digit',
+                                        })}
+                                    </div>
+                                    <p className={`font-semibold text-slate-900 dark:text-white mt-1 ${activity.completed ? 'line-through' : ''}`}>
+                                        {activity.title}
+                                    </p>
+                                    {activity.dealId && (
+                                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 truncate">
+                                            {dealTitleById.get(activity.dealId) ?? 'Deal vinculado'}
+                                        </p>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    ))
+                )}
+            </div>
+
+            {/* Desktop: grade semanal */}
+            <div className="hidden md:block overflow-auto max-h-[650px]">
+                <div className="min-w-[720px] lg:min-w-[900px]">
                     {/* Day Headers */}
                     <div className="grid grid-cols-8 border-b border-slate-200 dark:border-white/10 sticky top-0 bg-white dark:bg-dark-card z-10 shadow-sm">
                         <div className="p-3 text-xs font-bold text-slate-500 uppercase bg-slate-50 dark:bg-white/5"></div>

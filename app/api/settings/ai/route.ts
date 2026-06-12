@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { createClient } from '@/lib/supabase/server';
+import { createClient, createStaticAdminClient } from '@/lib/supabase/server';
 import { isAllowedOrigin } from '@/lib/security/sameOrigin';
 
 function json<T>(body: T, status = 200): Response {
@@ -49,7 +49,9 @@ export async function GET() {
     return json({ error: 'Profile not found' }, 404);
   }
 
-  const { data: orgSettings, error: orgError } = await supabase
+  // Segurança: chaves lidas via service-role após autenticação. As colunas de chave
+  // têm acesso revogado para o role `authenticated` no banco (defense-in-depth).
+  const { data: orgSettings, error: orgError } = await createStaticAdminClient()
     .from('organization_settings')
     .select('ai_enabled, ai_provider, ai_model, ai_google_key, ai_openai_key, ai_anthropic_key')
     .eq('organization_id', profile.organization_id)
@@ -158,7 +160,9 @@ export async function POST(req: Request) {
   const anthropicKey = normalizeKey(updates.aiAnthropicKey);
   if (anthropicKey !== undefined) dbUpdates.ai_anthropic_key = anthropicKey;
 
-  const { error: upsertError } = await supabase
+  // Upsert via service-role: o papel de admin já foi verificado acima e as colunas
+  // de chave têm escrita revogada para o role `authenticated` no banco.
+  const { error: upsertError } = await createStaticAdminClient()
     .from('organization_settings')
     .upsert(dbUpdates, { onConflict: 'organization_id' });
 

@@ -850,10 +850,10 @@ export const FocusContextPanel: React.FC<FocusContextPanelProps> = ({
                 </header>
 
                 {/* === BODY === */}
-                <div className="flex-1 flex min-h-0 overflow-hidden">
+                <div className="flex-1 flex flex-col xl:flex-row min-h-0 overflow-hidden">
 
                     {/* LEFT: Contact */}
-                    <aside className="w-[400px] shrink-0 border-r border-white/5 flex flex-col">
+                    <aside className="w-full xl:w-[400px] xl:shrink-0 border-b xl:border-b-0 xl:border-r border-white/5 flex flex-col max-h-[45vh] xl:max-h-none">
 
                         <div className="p-6 border-b border-white/5">
                             <div className="flex items-center justify-between mb-3">
@@ -876,8 +876,9 @@ export const FocusContextPanel: React.FC<FocusContextPanelProps> = ({
                                         onClick={() => refetchAI()}
                                         className="p-1 hover:bg-white/5 rounded text-slate-500 hover:text-slate-300 transition-colors"
                                         title="Reanalisar com IA"
+                                        aria-label="Reanalisar com IA"
                                     >
-                                        <RefreshCw size={12} />
+                                        <RefreshCw size={12} aria-hidden="true" />
                                     </button>
                                 </div>
                             </div>
@@ -909,8 +910,9 @@ export const FocusContextPanel: React.FC<FocusContextPanelProps> = ({
                                     onClick={() => refetchAI()}
                                     className="p-1.5 hover:bg-white/5 rounded text-slate-500 hover:text-slate-300 transition-colors"
                                     title="Reanalisar"
+                                    aria-label="Reanalisar saúde do deal com IA"
                                 >
-                                    <RefreshCw size={12} />
+                                    <RefreshCw size={12} aria-hidden="true" />
                                 </button>
                             </div>
 
@@ -1245,7 +1247,7 @@ export const FocusContextPanel: React.FC<FocusContextPanelProps> = ({
                     </aside>
 
                     {/* RIGHT: Split View (Timeline + Workspace) */}
-                    <main className="flex-1 flex min-w-0 bg-slate-900/10">
+                    <main className="flex-1 flex flex-col xl:flex-row min-w-0 min-h-0 bg-slate-900/10">
 
                         {/* COL 1: Timeline & Interaction (Flexible Width) */}
                         <div className="flex-1 flex flex-col min-w-0 border-r border-dark-border">
@@ -1255,11 +1257,19 @@ export const FocusContextPanel: React.FC<FocusContextPanelProps> = ({
                                     Atividades
                                 </h3>
                                 <div className="flex items-center gap-1">
-                                    <button className="p-1.5 hover:bg-white/5 rounded text-slate-500 hover:text-white transition-colors">
-                                        <Filter size={14} />
+                                    <button
+                                        type="button"
+                                        className="p-1.5 hover:bg-white/5 rounded text-slate-500 hover:text-white transition-colors"
+                                        aria-label="Filtrar atividades"
+                                    >
+                                        <Filter size={14} aria-hidden="true" />
                                     </button>
-                                    <button className="p-1.5 hover:bg-white/5 rounded text-slate-500 hover:text-white transition-colors">
-                                        <Search size={14} />
+                                    <button
+                                        type="button"
+                                        className="p-1.5 hover:bg-white/5 rounded text-slate-500 hover:text-white transition-colors"
+                                        aria-label="Buscar atividades"
+                                    >
+                                        <Search size={14} aria-hidden="true" />
                                     </button>
                                 </div>
                             </div>
@@ -1487,8 +1497,8 @@ export const FocusContextPanel: React.FC<FocusContextPanelProps> = ({
                             </div>
                         </div>
 
-                        {/* COL 2: Workspace (Fixed Width) */}
-                        <div className="w-[400px] flex flex-col min-h-0 bg-slate-900/20 border-l border-white/5 relative">
+                        {/* COL 2: Workspace (Fixed Width on desktop) */}
+                        <div className="w-full xl:w-[400px] xl:shrink-0 flex flex-col min-h-0 bg-slate-900/20 border-t xl:border-t-0 xl:border-l border-white/5 relative min-h-[280px] xl:min-h-0">
                             {/* Workspace Tabs */}
                             <div className="shrink-0 flex items-center px-4 h-14 border-b border-white/5 gap-4">
                                 {['chat', 'notas', 'scripts', 'files'].map((tab) => (
@@ -1565,8 +1575,9 @@ export const FocusContextPanel: React.FC<FocusContextPanelProps> = ({
                                                         <button
                                                             onClick={() => deleteNote.mutate(n.id)}
                                                             className="opacity-0 group-hover:opacity-100 p-1 hover:bg-red-500/10 rounded text-slate-500 hover:text-red-400 transition-all"
+                                                            aria-label="Excluir nota"
                                                         >
-                                                            <Trash2 size={12} />
+                                                            <Trash2 size={12} aria-hidden="true" />
                                                         </button>
                                                     </div>
                                                 </div>
@@ -1761,14 +1772,16 @@ export const FocusContextPanel: React.FC<FocusContextPanelProps> = ({
                                                         <button
                                                             onClick={() => downloadFile(file)}
                                                             className="p-2 hover:bg-white/10 rounded-lg text-slate-500 hover:text-white transition-colors"
+                                                            aria-label={`Baixar ${file.file_name}`}
                                                         >
-                                                            <Download size={16} />
+                                                            <Download size={16} aria-hidden="true" />
                                                         </button>
                                                         <button
                                                             onClick={() => deleteFile.mutate({ fileId: file.id, filePath: file.file_path })}
                                                             className="p-2 hover:bg-red-500/10 rounded-lg text-slate-500 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100"
+                                                            aria-label={`Excluir ${file.file_name}`}
                                                         >
-                                                            <Trash2 size={16} />
+                                                            <Trash2 size={16} aria-hidden="true" />
                                                         </button>
                                                     </div>
                                                 );

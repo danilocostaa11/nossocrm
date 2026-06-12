@@ -41,6 +41,30 @@ export async function GET(req: Request) {
 
     const supabase = await createClient();
 
+    // Defense-in-depth: exige usuário autenticado com organização e filtra
+    // explicitamente por organization_id (além do RLS).
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('organization_id, role')
+      .eq('id', user.id)
+      .single();
+
+    const organizationId = profile?.organization_id as string | undefined;
+    if (!organizationId) {
+      return NextResponse.json({ error: 'Profile sem organização' }, { status: 403 });
+    }
+
+    if (profile?.role !== 'admin') {
+      return NextResponse.json({ error: 'Apenas administradores podem exportar contatos.' }, { status: 403 });
+    }
+
     const chunkSize = 1000;
     let page = 0;
     let allContacts: Array<any> = [];
@@ -56,6 +80,7 @@ export async function GET(req: Request) {
         .select(
           'id,name,email,phone,role,notes,status,stage,created_at,updated_at,client_company_id,last_purchase_date'
         )
+        .eq('organization_id', organizationId)
         .is('deleted_at', null);
 
       if (search) {
@@ -104,6 +129,7 @@ export async function GET(req: Request) {
         const { data: companies, error: companiesError } = await supabase
           .from('crm_companies')
           .select('id,name')
+          .eq('organization_id', organizationId)
           .in('id', ids)
           .is('deleted_at', null);
 

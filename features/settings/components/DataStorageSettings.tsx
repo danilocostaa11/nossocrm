@@ -51,6 +51,13 @@ export const DataStorageSettings: React.FC = () => {
             return;
         }
 
+        // Segurança: apenas admins podem zerar os dados, e SOMENTE da própria organização.
+        const organizationId = profile?.organization_id;
+        if (!isAdmin || !organizationId) {
+            addToast('Apenas administradores podem zerar os dados da organização.', 'error');
+            return;
+        }
+
         setIsDeleting(true);
 
         try {
@@ -61,7 +68,7 @@ export const DataStorageSettings: React.FC = () => {
             const { error: boardsRefsError } = await sb
                 .from('boards')
                 .update({ won_stage_id: null, lost_stage_id: null, next_board_id: null })
-                .neq('id', '00000000-0000-0000-0000-000000000000'); // Update all
+                .eq('organization_id', organizationId);
             if (boardsRefsError) throw boardsRefsError;
 
             // 0.1 Integrações/Webhooks (novas FKs para board_stages/boards)
@@ -74,74 +81,75 @@ export const DataStorageSettings: React.FC = () => {
             const { error: deliveriesError } = await sb
                 .from('webhook_deliveries')
                 .delete()
-                .neq('id', '00000000-0000-0000-0000-000000000000');
+                .eq('organization_id', organizationId);
             if (deliveriesError) console.warn('Aviso: erro ao limpar webhook_deliveries:', deliveriesError);
 
             const { error: eventsOutError } = await sb
                 .from('webhook_events_out')
                 .delete()
-                .neq('id', '00000000-0000-0000-0000-000000000000');
+                .eq('organization_id', organizationId);
             if (eventsOutError) console.warn('Aviso: erro ao limpar webhook_events_out:', eventsOutError);
 
             const { error: eventsInError } = await sb
                 .from('webhook_events_in')
                 .delete()
-                .neq('id', '00000000-0000-0000-0000-000000000000');
+                .eq('organization_id', organizationId);
             if (eventsInError) console.warn('Aviso: erro ao limpar webhook_events_in:', eventsInError);
 
             const { error: outboundError } = await sb
                 .from('integration_outbound_endpoints')
                 .delete()
-                .neq('id', '00000000-0000-0000-0000-000000000000');
+                .eq('organization_id', organizationId);
             if (outboundError) console.warn('Aviso: erro ao limpar integration_outbound_endpoints:', outboundError);
 
             const { error: inboundError } = await sb
                 .from('integration_inbound_sources')
                 .delete()
-                .neq('id', '00000000-0000-0000-0000-000000000000');
+                .eq('organization_id', organizationId);
             if (inboundError) console.warn('Aviso: erro ao limpar integration_inbound_sources:', inboundError);
 
             // 1. Activities (depende de deals)
-            const { error: activitiesError } = await sb.from('activities').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+            const { error: activitiesError } = await sb.from('activities').delete().eq('organization_id', organizationId);
             if (activitiesError) throw activitiesError;
 
             // 2. Deal Items (depende de deals)
-            const { error: itemsError } = await sb.from('deal_items').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+            const { error: itemsError } = await sb.from('deal_items').delete().eq('organization_id', organizationId);
             if (itemsError) throw itemsError;
 
             // 3. Deals (depende de boards, contacts, companies)
-            const { error: dealsError } = await sb.from('deals').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+            const { error: dealsError } = await sb.from('deals').delete().eq('organization_id', organizationId);
             if (dealsError) throw dealsError;
 
             // 0. Limpar referência de Active Board em user_settings (evita erro de FK)
+            // user_settings é por usuário (sem organization_id); o RLS restringe ao próprio usuário.
             const { error: userSettingsError } = await sb
                 .from('user_settings')
                 .update({ active_board_id: null })
-                .neq('id', '00000000-0000-0000-0000-000000000000'); // Update all
+                .neq('id', '00000000-0000-0000-0000-000000000000');
             if (userSettingsError) console.warn('Aviso: erro ao limpar user_settings (pode não existir ainda):', userSettingsError);
 
             // 4. Board Stages (depende de boards)
-            const { error: stagesError } = await sb.from('board_stages').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+            const { error: stagesError } = await sb.from('board_stages').delete().eq('organization_id', organizationId);
             if (stagesError) throw stagesError;
 
             // 5. Boards
-            const { error: boardsError } = await sb.from('boards').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+            const { error: boardsError } = await sb.from('boards').delete().eq('organization_id', organizationId);
             if (boardsError) throw boardsError;
 
             // 6. Contacts
-            const { error: contactsError } = await sb.from('contacts').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+            const { error: contactsError } = await sb.from('contacts').delete().eq('organization_id', organizationId);
             if (contactsError) throw contactsError;
 
             // 7. CRM Companies (empresas dos clientes, não a company do tenant!)
-            const { error: crmCompaniesError } = await sb.from('crm_companies').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+            const { error: crmCompaniesError } = await sb.from('crm_companies').delete().eq('organization_id', organizationId);
             if (crmCompaniesError) throw crmCompaniesError;
 
             // 8. Tags
-            const { error: tagsError } = await sb.from('tags').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+            const { error: tagsError } = await sb.from('tags').delete().eq('organization_id', organizationId);
             if (tagsError) throw tagsError;
 
             // 9. Products
-            const { error: productsError } = await sb.from('products').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+            const { error: productsError } = await sb.from('products').delete().eq('organization_id', organizationId);
             if (productsError) throw productsError;
 
             // Invalida todo o cache do React Query

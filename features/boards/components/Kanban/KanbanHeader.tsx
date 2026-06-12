@@ -90,8 +90,9 @@ export const KanbanHeader: React.FC<KanbanHeaderProps> = ({
                         onClick={() => onEditBoard(activeBoard)}
                         className="p-2 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5 rounded-lg transition-colors"
                         title="Configurações do Board"
+                        aria-label="Configurações do board"
                     >
-                        <Settings size={20} />
+                        <Settings size={20} aria-hidden="true" />
                     </button>
                 )}
 
@@ -101,8 +102,9 @@ export const KanbanHeader: React.FC<KanbanHeaderProps> = ({
                         onClick={onExportTemplates}
                         className="p-2 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5 rounded-lg transition-colors"
                         title="Exportar template (comunidade)"
+                        aria-label="Exportar template do board"
                     >
-                        <Download size={20} />
+                        <Download size={20} aria-hidden="true" />
                     </button>
                 )}
 
@@ -113,8 +115,9 @@ export const KanbanHeader: React.FC<KanbanHeaderProps> = ({
                             <button
                                 className="p-2 text-yellow-600 hover:text-yellow-700 dark:text-yellow-400 dark:hover:text-yellow-300 hover:bg-yellow-50 dark:hover:bg-yellow-900/20 rounded-lg transition-colors relative group"
                                 title="Automações Sugeridas"
+                                aria-label="Ver automações sugeridas"
                             >
-                                <Lightbulb size={20} className="fill-current" />
+                                <Lightbulb size={20} className="fill-current" aria-hidden="true" />
                                 <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
                             </button>
                         </PopoverTrigger>

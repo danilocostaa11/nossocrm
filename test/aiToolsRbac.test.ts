@@ -7,14 +7,22 @@ const profileQueryBuilder = {
     data: { first_name: 'Maria', nickname: null },
     error: null,
   })),
+  maybeSingle: vi.fn(async () => ({
+    data: { first_name: 'Maria', nickname: null },
+    error: null,
+  })),
 }
 
 const dealsQueryBuilder = {
+  select: vi.fn().mockReturnThis(),
   update: vi.fn().mockReturnThis(),
   eq: vi.fn().mockReturnThis(),
-  select: vi.fn().mockReturnThis(),
   single: vi.fn(async () => ({
-    data: { title: 'Negócio X' },
+    data: { title: 'Negócio X', owner_id: 'user-1' },
+    error: null,
+  })),
+  maybeSingle: vi.fn(async () => ({
+    data: { title: 'Negócio X', owner_id: 'user-1' },
     error: null,
   })),
 }
@@ -43,6 +51,7 @@ describe('AI Tools permissions', () => {
     const tools = createCRMTools(
       {
         organizationId: '11111111-1111-1111-1111-111111111111',
+        userRole: 'vendedor',
       },
       'user-1'
     )
@@ -60,5 +69,30 @@ describe('AI Tools permissions', () => {
     expect(supabaseMock.from).toHaveBeenCalledWith('deals')
     expect(dealsQueryBuilder.update).toHaveBeenCalledTimes(1)
     expect(String((res as any).message)).toContain('Maria')
+  })
+
+  it('bloqueia moveDeal de vendedor em deal de outro responsável', async () => {
+    dealsQueryBuilder.maybeSingle.mockResolvedValueOnce({
+      data: { owner_id: 'user-2' },
+      error: null,
+    })
+
+    const tools = createCRMTools(
+      {
+        organizationId: '11111111-1111-1111-1111-111111111111',
+        userRole: 'vendedor',
+      },
+      'user-1'
+    )
+
+    const res = await tools.moveDeal.execute({
+      dealId: 'deal-1',
+      stageId: 'stage-1',
+    })
+
+    expect(res).toMatchObject({
+      error: expect.stringContaining('Vendedores só podem alterar'),
+    })
+    expect(dealsQueryBuilder.update).not.toHaveBeenCalled()
   })
 })

@@ -1,6 +1,6 @@
 import React from 'react';
 import { useRouter } from 'next/navigation';
-import { Trash2, X } from 'lucide-react';
+import { Trash2, X, Loader2 } from 'lucide-react';
 import { useContactsController } from './hooks/useContactsController';
 import { ContactsHeader } from './components/ContactsHeader';
 import { ContactsFilters } from './components/ContactsFilters';
@@ -70,6 +70,13 @@ export const ContactsPage: React.FC = () => {
                 counts={controller.stageCounts}
             />
 
+            {controller.isLoading && controller.contacts.length === 0 && controller.viewMode === 'people' ? (
+                <div className="flex flex-col items-center justify-center py-24 gap-3 text-slate-500 dark:text-slate-400">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary-500" />
+                    <p className="text-sm">Carregando contatos...</p>
+                </div>
+            ) : (
+            <>
             <ContactsTabs
                 viewMode={controller.viewMode}
                 setViewMode={controller.setViewMode}
@@ -132,6 +139,8 @@ export const ContactsPage: React.FC = () => {
                     isFetching={controller.isFetching}
                     isPlaceholderData={controller.isPlaceholderData}
                 />
+            )}
+            </>
             )}
 
             <ContactFormModal

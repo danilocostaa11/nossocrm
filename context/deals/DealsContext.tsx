@@ -10,7 +10,7 @@ import { Deal, DealView, DealItem, Company, Contact, Board } from '@/types';
 import { dealsService } from '@/lib/supabase';
 import { useAuth } from '../AuthContext';
 import { queryKeys, DEALS_VIEW_KEY } from '@/lib/query';
-import { useDeals as useTanStackDealsQuery } from '@/lib/query/hooks/useDealsQuery';
+import { useDealsView as useTanStackDealsViewQuery } from '@/lib/query/hooks/useDealsQuery';
 
 interface DealsContextType {
   // Raw data (agora vem direto do TanStack Query)
@@ -48,10 +48,18 @@ export const DealsProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   // TanStack Query como fonte única de verdade
   // ============================================
   const {
-    data: rawDeals = [],
+    data: dealViews = [],
     isLoading: loading,
     error: queryError,
-  } = useTanStackDealsQuery();
+  } = useTanStackDealsViewQuery();
+
+  const rawDeals = useMemo(
+    () =>
+      dealViews.map(
+        ({ companyName, contactName, contactEmail, stageLabel, clientCompanyName, ...deal }) => deal as Deal
+      ),
+    [dealViews]
+  );
 
   // Converte erro do TanStack Query para string
   const error = queryError ? (queryError as Error).message : null;

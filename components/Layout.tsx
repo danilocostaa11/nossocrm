@@ -253,8 +253,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               onClick={() => setSidebarCollapsed(true)}
               className="text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors p-1 rounded-md hover:bg-slate-100 dark:hover:bg-white/5"
               title="Recolher Menu"
+              aria-label="Recolher menu lateral"
             >
-              <PanelLeftClose size={20} />
+              <PanelLeftClose size={20} aria-hidden="true" />
             </button>
           )}
         </div>
@@ -270,26 +271,26 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             { to: '/settings', icon: Settings, label: 'Configurações', prefetch: 'settings' as const },
           ].map((item) => {
             if (sidebarCollapsed) {
+              const isActive = pathname === item.to || (item.to === '/boards' && pathname === '/pipeline');
+              const wasJustClicked = clickedPath === item.to;
+              const anotherItemWasClicked = clickedPath && clickedPath !== item.to;
+              const isActuallyActive = anotherItemWasClicked ? false : (isActive || wasJustClicked);
+
               return (
                 <Link
                   key={item.to}
                   href={item.to}
                   onMouseEnter={() => prefetchRoute(item.prefetch)}
                   onClick={() => setClickedPath(item.to)}
-                  className={(() => {
-                    const isActive = pathname === item.to || (item.to === '/boards' && pathname === '/pipeline');
-                    const wasJustClicked = clickedPath === item.to;
-                    // If user clicked on a DIFFERENT item, immediately deactivate this one
-                    const anotherItemWasClicked = clickedPath && clickedPath !== item.to;
-                    const isActuallyActive = anotherItemWasClicked ? false : (isActive || wasJustClicked);
-                    return `w-10 h-10 rounded-lg flex items-center justify-center ${isActuallyActive
+                  className={`w-10 h-10 rounded-lg flex items-center justify-center ${isActuallyActive
                       ? 'bg-primary-500/10 text-primary-600 dark:text-primary-400 border border-primary-200 dark:border-primary-900/50'
                       : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white'
-                      }`;
-                  })()}
+                    }`}
                   title={item.label}
+                  aria-label={item.label}
+                  aria-current={isActuallyActive ? 'page' : undefined}
                 >
-                  <item.icon size={20} />
+                  <item.icon size={20} aria-hidden="true" />
                 </Link>
               );
             }
@@ -315,8 +316,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
               className="flex items-center justify-center w-10 h-10 p-2 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5 transition-all"
               title="Expandir Menu"
+              aria-label="Expandir menu lateral"
             >
-              <PanelLeftOpen size={20} />
+              <PanelLeftOpen size={20} aria-hidden="true" />
             </button>
           </div>
         )}
@@ -326,6 +328,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             {/* User Card - Clickable */}
             <button
               onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+              aria-label="Menu do usuário"
+              aria-expanded={isUserMenuOpen}
+              aria-haspopup="menu"
               className={`flex items-center gap-3 rounded-xl bg-slate-50/50 dark:bg-white/5 border border-slate-100 dark:border-white/5 hover:bg-slate-100 dark:hover:bg-white/10 transition-all group focus-visible-ring ${sidebarCollapsed ? 'p-0 w-10 h-10 justify-center' : 'w-full p-3'
                 }`}
             >
@@ -424,6 +429,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               <button
                 type="button"
                 onClick={() => setIsGlobalAIOpen(!isGlobalAIOpen)}
+                aria-label={isGlobalAIOpen ? 'Fechar assistente de IA' : 'Abrir assistente de IA'}
+                aria-pressed={isGlobalAIOpen}
                 className={`p-2 rounded-full transition-all active:scale-95 focus-visible-ring ${isGlobalAIOpen
                   ? 'text-primary-600 bg-primary-50 dark:text-primary-400 dark:bg-primary-900/20'
                   : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/10'
@@ -435,6 +442,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               <button
                 type="button"
                 onClick={toggleDebugMode}
+                aria-label={debugEnabled ? 'Desativar modo debug' : 'Ativar modo debug'}
+                aria-pressed={debugEnabled}
                 className={`p-2 rounded-full transition-all active:scale-95 focus-visible-ring ${debugEnabled
                   ? 'text-purple-600 bg-purple-100 dark:text-purple-400 dark:bg-purple-900/30 ring-2 ring-purple-400/50'
                   : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/10'
@@ -447,6 +456,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               <button
                 type="button"
                 onClick={toggleDarkMode}
+                aria-label={darkMode ? 'Ativar modo claro' : 'Ativar modo escuro'}
                 className="p-2 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/10 rounded-full transition-all active:scale-95 focus-visible-ring"
               >
                 {darkMode ? <Sun size={20} aria-hidden="true" /> : <Moon size={20} aria-hidden="true" />}

@@ -1,0 +1,62 @@
+{
+  "version": 1,
+  "generatedAt": "2026-06-12T09:36:19.049Z",
+  "source": "manual",
+  "stack": {
+    "primaryLanguage": "typescript",
+    "languages": [
+      "javascript",
+      "typescript"
+    ],
+    "frameworks": [
+      "nextjs"
+    ],
+    "buildTools": [],
+    "testFrameworks": [
+      "vitest"
+    ],
+    "packageManager": "npm"
+  },
+  "sensors": [
+    {
+      "id": "lint",
+      "name": "Lint",
+      "description": "ESLint com zero warnings tolerados (eslint --max-warnings 0)",
+      "severity": "critical",
+      "command": "npm run lint",
+      "script": "lint"
+    },
+    {
+      "id": "typecheck",
+      "name": "Typecheck",
+      "description": "TypeScript strict sem emissão (tsc --noEmit)",
+      "severity": "critical",
+      "command": "npm run typecheck",
+      "script": "typecheck"
+    },
+    {
+      "id": "test",
+      "name": "Test",
+      "description": "Suite completa Vitest em single run (unit, UI, segurança multi-tenant)",
+      "severity": "critical",
+      "command": "npm run test:run",
+      "script": "test:run"
+    },
+    {
+      "id": "build",
+      "name": "Build",
+      "description": "Build de produção Next.js 16",
+      "severity": "critical",
+      "command": "npm run build",
+      "script": "build"
+    },
+    {
+      "id": "stories",
+      "name": "Stories",
+      "description": "Testes de stories (test/stories) com reporter compacto",
+      "severity": "warning",
+      "command": "npm run stories",
+      "script": "stories"
+    }
+  ]
+}

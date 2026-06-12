@@ -36,6 +36,7 @@ export function BottomNav({ onOpenMore }: BottomNavProps) {
                 key={item.id}
                 type="button"
                 onClick={onOpenMore}
+                aria-label="Mais opções de navegação"
                 className={cn(
                   'flex flex-1 flex-col items-center justify-center gap-1',
                   'text-xs font-medium',

@@ -15,7 +15,7 @@
 import { generateObject, generateText } from 'ai';
 import { getModel, type AIProvider } from '@/lib/ai/config';
 import { z } from 'zod';
-import { createClient } from '@/lib/supabase/server';
+import { createClient, createStaticAdminClient } from '@/lib/supabase/server';
 import { isAllowedOrigin } from '@/lib/security/sameOrigin';
 import { getResolvedPrompt } from '@/lib/ai/prompts/server';
 import { renderPromptTemplate } from '@/lib/ai/prompts/render';
@@ -163,7 +163,7 @@ export async function POST(req: Request) {
 
   const { data: profile, error: profileError } = await supabase
     .from('profiles')
-    .select('organization_id')
+    .select('organization_id, role')
     .eq('id', user.id)
     .single();
 
@@ -171,7 +171,21 @@ export async function POST(req: Request) {
     return json<AIActionResponse>({ error: 'Profile not found' }, 404);
   }
 
-  const { data: orgSettings, error: orgError } = await supabase
+  const ADMIN_ONLY_ACTIONS: AIAction[] = [
+    'generateBoardStructure',
+    'generateBoardStrategy',
+    'refineBoardWithAI',
+    'chatWithBoardAgent',
+  ];
+
+  if (ADMIN_ONLY_ACTIONS.includes(action) && profile.role !== 'admin') {
+    return json<AIActionResponse>({ error: 'Apenas administradores podem executar esta ação.' }, 403);
+  }
+
+  // Segurança: as chaves de IA são lidas com o client service-role após autenticação.
+  // As colunas de chave têm acesso revogado para o role `authenticated` no banco.
+  const adminClient = createStaticAdminClient();
+  const { data: orgSettings, error: orgError } = await adminClient
     .from('organization_settings')
     .select('ai_enabled, ai_provider, ai_model, ai_google_key, ai_openai_key, ai_anthropic_key')
     .eq('organization_id', profile.organization_id)

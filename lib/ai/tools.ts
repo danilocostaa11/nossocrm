@@ -20,6 +20,11 @@ export function createCRMTools(context: CRMCallOptions, userId: string) {
     // Use AI_TOOL_APPROVAL_BYPASS=true para permitir execução direta (somente dev/test).
     const bypassApproval = process.env.AI_TOOL_APPROVAL_BYPASS === 'true';
 
+    // RBAC: o client é service-role (bypassa RLS), então o papel do usuário
+    // precisa ser checado aqui. `userRole` é injetado server-side pela rota.
+    const isAdmin = context.userRole === 'admin';
+    const ADMIN_ONLY_ERROR = 'Apenas administradores podem alterar a estrutura do pipeline (estágios).';
+
     const formatSupabaseFailure = (error: any) => {
         const msg = (error?.message || error?.error_description || String(error || '')).trim();
         const normalized = msg.toLowerCase();
@@ -80,6 +85,31 @@ export function createCRMTools(context: CRMCallOptions, userId: string) {
         }
 
         return { ok: true as const, deal };
+    };
+
+    const OWNER_ONLY_ERROR =
+        'Vendedores só podem alterar negócios atribuídos a eles. Peça a um administrador.';
+
+    const ensureDealOwnedByUser = async (dealId: string) => {
+        if (isAdmin) return { ok: true as const };
+
+        const { data: deal, error: dealError } = await supabase
+            .from('deals')
+            .select('owner_id')
+            .eq('organization_id', organizationId)
+            .eq('id', dealId)
+            .maybeSingle();
+
+        if (dealError) {
+            return { ok: false as const, error: formatSupabaseFailure(dealError) };
+        }
+        if (!deal) {
+            return { ok: false as const, error: 'Deal não encontrado nesta organização.' };
+        }
+        if (deal.owner_id && deal.owner_id !== userId) {
+            return { ok: false as const, error: OWNER_ONLY_ERROR };
+        }
+        return { ok: true as const };
     };
 
     const resolveStageIdForBoard = async (params: {
@@ -311,11 +341,9 @@ export function createCRMTools(context: CRMCallOptions, userId: string) {
                     const guard = await ensureBoardBelongsToOrganization(context.boardId);
                     if (!guard.ok) return { error: guard.error };
 
-                    // Compat: inclui deals legados que ficaram com organization_id NULL.
-                    // Como o board já foi validado no tenant, isso não vaza dados.
                     queryBuilder = queryBuilder
                         .eq('board_id', context.boardId)
-                        .or(`organization_id.eq.${organizationId},organization_id.is.null`);
+                        .eq('organization_id', organizationId);
                 } else {
                     // Sem board no contexto: sempre filtra por organization_id.
                     queryBuilder = queryBuilder.eq('organization_id', organizationId);
@@ -475,10 +503,9 @@ export function createCRMTools(context: CRMCallOptions, userId: string) {
                     .select('id, title, value, updated_at, is_won, is_lost, contact:contacts(name)')
                     .eq('board_id', targetBoardId)
                     .eq('stage_id', finalStageId)
-                    .or(`organization_id.eq.${organizationId},organization_id.is.null`)
+                    .eq('organization_id', organizationId)
                     .order('value', { ascending: false })
-                    // Busca mais do que o necessário e filtra client-side para tratar legacy NULL
-                    .limit(Math.max(limit * 5, 50));
+                    .limit(limit);
 
                 if (dealsError) {
                     return { error: formatSupabaseFailure(dealsError) };
@@ -533,11 +560,10 @@ export function createCRMTools(context: CRMCallOptions, userId: string) {
                     .from('deals')
                     .select('id, title, value, updated_at, is_won, is_lost, contact:contacts(name)')
                     .eq('board_id', targetBoardId)
-                    .or(`organization_id.eq.${organizationId},organization_id.is.null`)
+                    .eq('organization_id', organizationId)
                     .lt('updated_at', cutoffDate.toISOString())
                     .order('updated_at', { ascending: true })
-                    // Busca mais e filtra client-side para tratar legacy NULL
-                    .limit(Math.max(limit * 5, 50));
+                    .limit(Math.max(limit * 3, 30));
 
                 const openDeals = (deals || []).filter((d: any) => !d.is_won && !d.is_lost);
                 const finalDeals = openDeals.slice(0, limit);
@@ -672,6 +698,9 @@ export function createCRMTools(context: CRMCallOptions, userId: string) {
                 if (!targetDealId) {
                     return { error: 'Nenhum deal especificado.' };
                 }
+
+                const ownerGuard = await ensureDealOwnedByUser(targetDealId);
+                if (!ownerGuard.ok) return { error: ownerGuard.error };
 
                 const { data: deal } = await supabase
                     .from('deals')
@@ -827,6 +856,9 @@ export function createCRMTools(context: CRMCallOptions, userId: string) {
                     return { error: 'Nenhum deal especificado.' };
                 }
 
+                const ownerGuard = await ensureDealOwnedByUser(targetDealId);
+                if (!ownerGuard.ok) return { error: ownerGuard.error };
+
                 const updateData: Record<string, unknown> = { updated_at: new Date().toISOString() };
                 if (title) updateData.title = title;
                 if (value !== undefined) updateData.value = value;
@@ -913,6 +945,9 @@ export function createCRMTools(context: CRMCallOptions, userId: string) {
                     return { error: 'Não consegui identificar o deal. Forneça o ID, título ou nome do estágio.' };
                 }
 
+                const ownerGuard = await ensureDealOwnedByUser(targetDealId);
+                if (!ownerGuard.ok) return { error: ownerGuard.error };
+
                 // Se existir um estágio de "Ganho" no board, também mova o card para ele.
                 // Isso evita a sensação de "não moveu" quando a UI do kanban é baseada em stage_id.
                 let wonStageId: string | null = null;
@@ -977,6 +1012,9 @@ export function createCRMTools(context: CRMCallOptions, userId: string) {
                     return { error: 'Nenhum deal especificado.' };
                 }
 
+                const ownerGuard = await ensureDealOwnedByUser(targetDealId);
+                if (!ownerGuard.ok) return { error: ownerGuard.error };
+
                 const { data: deal, error } = await supabase
                     .from('deals')
                     .update({
@@ -1023,9 +1061,31 @@ export function createCRMTools(context: CRMCallOptions, userId: string) {
                     .select('first_name, nickname')
                     .eq('organization_id', organizationId)
                     .eq('id', newOwnerId)
-                    .single();
+                    .maybeSingle();
 
-                const ownerName = ownerProfile?.nickname || ownerProfile?.first_name || 'Novo responsável';
+                // Segurança: nunca atribuir deal a um usuário fora da organização.
+                if (!ownerProfile) {
+                    return { error: 'Responsável não encontrado nesta organização.' };
+                }
+
+                // RBAC: vendedor só pode reatribuir deals dos quais é o responsável atual
+                // (ou deals sem responsável). Admin pode reatribuir qualquer deal.
+                if (!isAdmin) {
+                    const { data: currentDeal, error: currentDealError } = await supabase
+                        .from('deals')
+                        .select('owner_id')
+                        .eq('organization_id', organizationId)
+                        .eq('id', targetDealId)
+                        .maybeSingle();
+
+                    if (currentDealError) return { error: formatSupabaseFailure(currentDealError) };
+                    if (!currentDeal) return { error: 'Deal não encontrado nesta organização.' };
+                    if (currentDeal.owner_id && currentDeal.owner_id !== userId) {
+                        return { error: 'Você só pode reatribuir deals dos quais é o responsável. Peça a um administrador.' };
+                    }
+                }
+
+                const ownerName = ownerProfile.nickname || ownerProfile.first_name || 'Novo responsável';
 
                 const { data: deal, error } = await supabase
                     .from('deals')
@@ -1127,14 +1187,21 @@ export function createCRMTools(context: CRMCallOptions, userId: string) {
                 // 1) Carrega deals do tenant e do board (sem vazar outros boards/tenants)
                 const { data: deals, error: dealsError } = await supabase
                     .from('deals')
-                    .select('id, title, board_id')
+                    .select('id, title, board_id, owner_id')
                     .eq('organization_id', organizationId)
                     .eq('board_id', targetBoardId)
                     .in('id', unique);
 
                 if (dealsError) return { error: formatSupabaseFailure(dealsError) };
 
-                const foundIds = new Set((deals || []).map((d: any) => d.id));
+                let eligibleDeals = deals || [];
+                if (!isAdmin) {
+                    eligibleDeals = eligibleDeals.filter(
+                        (d: { owner_id?: string | null }) => !d.owner_id || d.owner_id === userId
+                    );
+                }
+
+                const foundIds = new Set(eligibleDeals.map((d: { id: string }) => d.id));
                 const missingIds = unique.filter((id) => !foundIds.has(id));
 
                 if (missingIds.length > 0 && !allowPartial) {
@@ -1144,7 +1211,7 @@ export function createCRMTools(context: CRMCallOptions, userId: string) {
                 const stageRes = await resolveStageIdForBoard({ boardId: targetBoardId, stageId, stageName });
                 if (!stageRes.ok) return { error: stageRes.error };
 
-                const idsToMove = (deals || []).map((d: any) => d.id);
+                const idsToMove = eligibleDeals.map((d: { id: string }) => d.id);
                 if (idsToMove.length === 0) {
                     return { error: 'Nenhum deal válido encontrado para mover (cheque board/organização).' };
                 }
@@ -1512,6 +1579,9 @@ export function createCRMTools(context: CRMCallOptions, userId: string) {
                 const dealGuard = await ensureDealBelongsToOrganization(targetDealId);
                 if (!dealGuard.ok) return { error: dealGuard.error };
 
+                const ownerGuard = await ensureDealOwnedByUser(targetDealId);
+                if (!ownerGuard.ok) return { error: ownerGuard.error };
+
                 const { data: contact, error: contactError } = await supabase
                     .from('contacts')
                     .select('id, name')
@@ -1568,6 +1638,7 @@ export function createCRMTools(context: CRMCallOptions, userId: string) {
             }),
             needsApproval: !bypassApproval,
             execute: async ({ stageId, name, label, color, order, isDefault }) => {
+                if (!isAdmin) return { error: ADMIN_ONLY_ERROR };
                 const updateData: Record<string, unknown> = {};
                 if (name !== undefined) updateData.name = name;
                 if (label !== undefined) updateData.label = label;
@@ -1597,6 +1668,7 @@ export function createCRMTools(context: CRMCallOptions, userId: string) {
             }),
             needsApproval: !bypassApproval,
             execute: async ({ boardId, orderedStageIds }) => {
+                if (!isAdmin) return { error: ADMIN_ONLY_ERROR };
                 const targetBoardId = boardId || context.boardId;
                 if (!targetBoardId) return { error: 'Nenhum board selecionado.' };
                 const guard = await ensureBoardBelongsToOrganization(targetBoardId);

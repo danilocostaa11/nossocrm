@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useCRM } from '@/context/CRMContext';
 import { useToast } from '@/context/ToastContext';
-import { TrendingUp, TrendingDown, Users, DollarSign, Target, Clock, MoreVertical, AlertTriangle } from 'lucide-react';
+import { TrendingUp, TrendingDown, Users, DollarSign, Target, Clock, MoreVertical, AlertTriangle, Loader2 } from 'lucide-react';
 import { StatCard } from './components/StatCard';
 import { ActivityFeedItem } from './components/ActivityFeedItem';
 import { PipelineAlertsModal } from './components/PipelineAlertsModal';
@@ -29,7 +29,7 @@ function formatChange(value: number): { text: string; isPositive: boolean } {
  */
 const DashboardPage: React.FC = () => {
   const router = useRouter();
-  const { activities, lifecycleStages, contacts, boards } = useCRM();
+  const { activities, lifecycleStages, contacts, boards, loading } = useCRM();
   const { addToast } = useToast();
   const [period, setPeriod] = useState<PeriodFilter>('this_month');
   const [showPipelineAlerts, setShowPipelineAlerts] = useState(false);
@@ -93,6 +93,15 @@ const DashboardPage: React.FC = () => {
   const dealsChangeInfo = formatChange(changes.deals);
   const winRateChangeInfo = formatChange(changes.winRate);
   const revenueChangeInfo = formatChange(changes.revenue);
+
+  if (loading && boards.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[calc(100vh-7rem)] gap-3 text-slate-500 dark:text-slate-400">
+        <Loader2 className="h-8 w-8 animate-spin text-primary-500" />
+        <p className="text-sm">Carregando visão geral...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col h-[calc(100vh-7rem)] space-y-4">

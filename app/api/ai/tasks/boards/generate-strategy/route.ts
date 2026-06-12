@@ -23,7 +23,7 @@ function json(body: unknown, status = 200): Response {
  */
 export async function POST(req: Request) {
   try {
-    const { model, supabase, organizationId } = await requireAITaskContext(req);
+    const { model, supabase, organizationId } = await requireAITaskContext(req, { requireAdmin: true });
     const enabled = await isAIFeatureEnabled(supabase as any, organizationId, 'ai_board_generate_strategy');
     if (!enabled) {
       return json({ error: { code: 'AI_FEATURE_DISABLED', message: 'Função de IA desativada: Gerar estratégia do board.' } }, 403);

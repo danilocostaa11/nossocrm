@@ -1,6 +1,6 @@
 import 'server-only';
 
-import { createClient } from '@/lib/supabase/server';
+import { createClient, createStaticAdminClient } from '@/lib/supabase/server';
 import { isAllowedOrigin } from '@/lib/security/sameOrigin';
 import { getModel, type AIProvider } from '@/lib/ai/config';
 
@@ -8,6 +8,7 @@ export type AITaskContext = {
   supabase: Awaited<ReturnType<typeof createClient>>;
   userId: string;
   organizationId: string;
+  role: string;
   provider: AIProvider;
   modelId: string;
   apiKey: string;
@@ -57,7 +58,10 @@ toResponse() {
  * @param {Request} req - Objeto da requisição.
  * @returns {Promise<AITaskContext>} Retorna um valor do tipo `Promise<AITaskContext>`.
  */
-export async function requireAITaskContext(req: Request): Promise<AITaskContext> {
+export async function requireAITaskContext(
+  req: Request,
+  opts?: { requireAdmin?: boolean }
+): Promise<AITaskContext> {
   // Mitigação CSRF: endpoint autenticado por cookies.
   if (!isAllowedOrigin(req)) {
     throw new AITaskHttpError(403, 'FORBIDDEN', 'Forbidden');
@@ -75,7 +79,7 @@ export async function requireAITaskContext(req: Request): Promise<AITaskContext>
 
   const { data: profile, error: profileError } = await supabase
     .from('profiles')
-    .select('organization_id')
+    .select('organization_id, role')
     .eq('id', user.id)
     .single();
 
@@ -83,9 +87,14 @@ export async function requireAITaskContext(req: Request): Promise<AITaskContext>
     throw new AITaskHttpError(404, 'PROFILE_NOT_FOUND', 'Profile not found');
   }
 
+  if (opts?.requireAdmin && profile.role !== 'admin') {
+    throw new AITaskHttpError(403, 'FORBIDDEN', 'Apenas administradores podem executar esta ação.');
+  }
+
   const organizationId = profile.organization_id as string;
 
-  const { data: orgSettings, error: orgError } = await supabase
+  // Segurança: chaves lidas via service-role (colunas revogadas para `authenticated`).
+  const { data: orgSettings, error: orgError } = await createStaticAdminClient()
     .from('organization_settings')
     .select('ai_enabled, ai_provider, ai_model, ai_google_key, ai_openai_key, ai_anthropic_key')
     .eq('organization_id', organizationId)
@@ -121,6 +130,7 @@ export async function requireAITaskContext(req: Request): Promise<AITaskContext>
     supabase,
     userId: user.id,
     organizationId,
+    role: profile.role as string,
     provider,
     modelId,
     apiKey,

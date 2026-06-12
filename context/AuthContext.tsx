@@ -88,6 +88,19 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+/** Normaliza roles legadas do banco ('user') para o contrato da app. */
+function normalizeProfileRole(raw: string | null | undefined): Profile['role'] {
+    return raw === 'admin' ? 'admin' : 'vendedor';
+}
+
+function normalizeProfile(data: Record<string, unknown>): Profile {
+    const base = data as unknown as Profile;
+    return {
+        ...base,
+        role: normalizeProfileRole(base.role),
+    };
+}
+
 /**
  * Provider de autenticação
  * 
@@ -152,8 +165,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
             if (error) {
                 console.error('Error fetching profile:', error);
-            } else {
-                setProfile(data);
+            } else if (data) {
+                setProfile(normalizeProfile(data as Record<string, unknown>));
             }
         } finally {
             setLoading(false);

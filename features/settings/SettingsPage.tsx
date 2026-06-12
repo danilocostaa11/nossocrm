@@ -16,6 +16,8 @@ import { Settings as SettingsIcon, Users, Database, Sparkles, Plug, Package } fr
 
 type SettingsTab = 'general' | 'products' | 'integrations' | 'ai' | 'data' | 'users';
 
+const ADMIN_ONLY_TABS: SettingsTab[] = ['products', 'integrations', 'users'];
+
 interface GeneralSettingsProps {
   hash?: string;
   isAdmin: boolean;
@@ -183,20 +185,29 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ tab: initialTab }) => {
 
   // Determine tab from pathname if available
   useEffect(() => {
+    const isAdmin = profile?.role === 'admin';
+
     if (pathname?.includes('/settings/ai')) {
       setActiveTab('ai');
     } else if (pathname?.includes('/settings/products')) {
-      setActiveTab('products');
+      setActiveTab(isAdmin ? 'products' : 'general');
     } else if (pathname?.includes('/settings/integracoes')) {
-      setActiveTab('integrations');
+      setActiveTab(isAdmin ? 'integrations' : 'general');
     } else if (pathname?.includes('/settings/data')) {
       setActiveTab('data');
     } else if (pathname?.includes('/settings/users')) {
-      setActiveTab('users');
+      setActiveTab(isAdmin ? 'users' : 'general');
     } else {
       setActiveTab('general');
     }
-  }, [pathname]);
+  }, [pathname, profile?.role]);
+
+  // Bloqueia vendedor em abas admin-only (URL direta ou estado stale)
+  useEffect(() => {
+    if (profile?.role !== 'admin' && ADMIN_ONLY_TABS.includes(activeTab)) {
+      setActiveTab('general');
+    }
+  }, [profile?.role, activeTab]);
 
   const tabs = [
     { id: 'general' as SettingsTab, name: 'Geral', icon: SettingsIcon },

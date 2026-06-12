@@ -72,6 +72,20 @@ async function resolveApiKeyOwnerUserId(opts: { apiKeyId: string; organizationId
   return data.created_by as string | null;
 }
 
+async function resolveUserRole(userId: string, organizationId: string): Promise<'admin' | 'vendedor' | undefined> {
+  const sb = createStaticAdminClient();
+  const { data, error } = await sb
+    .from('profiles')
+    .select('role')
+    .eq('id', userId)
+    .eq('organization_id', organizationId)
+    .maybeSingle();
+
+  if (error || !data?.role) return undefined;
+  if (data.role === 'admin' || data.role === 'vendedor') return data.role;
+  return undefined;
+}
+
 export async function GET() {
   return NextResponse.json({
     ok: true,
@@ -102,9 +116,11 @@ export async function POST(request: Request) {
     );
   }
 
+  const userRole = await resolveUserRole(userId, auth.organizationId);
+
   // Minimal context for MCP execution. Tool args can still include boardId/dealId/etc.
   const registry = buildCrmMcpRegistry({
-    context: { organizationId: auth.organizationId },
+    context: { organizationId: auth.organizationId, userRole },
     userId,
   });
 

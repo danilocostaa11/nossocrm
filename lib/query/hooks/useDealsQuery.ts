@@ -540,7 +540,7 @@ export const useAddDealItem = () => {
     },
     onSettled: (_data, _error, { dealId }) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.deals.detail(dealId) });
-      queryClient.invalidateQueries({ queryKey: queryKeys.deals.lists() });
+      queryClient.invalidateQueries({ queryKey: DEALS_VIEW_KEY });
     },
   });
 };
@@ -559,7 +559,7 @@ export const useRemoveDealItem = () => {
     },
     onSettled: (_data, _error, { dealId }) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.deals.detail(dealId) });
-      queryClient.invalidateQueries({ queryKey: queryKeys.deals.lists() });
+      queryClient.invalidateQueries({ queryKey: DEALS_VIEW_KEY });
     },
   });
 };

@@ -1,11 +1,10 @@
 /**
- * Mitigação simples de CSRF para endpoints autenticados por cookies.
+ * Mitigação de CSRF para endpoints autenticados por cookies.
  *
- * Ideia: em requests vindos do browser, o header `Origin` aparece em cenários cross-site.
- * Para rotas que dependem de cookies, negar quando `Origin` não bate com o host atual.
- *
- * - Se `Origin` estiver ausente (ex: server-to-server), não bloqueia.
- * - Usa x-forwarded-* quando disponível (Vercel/reverse proxies).
+ * - Com `Origin` presente: deve bater com o host esperado.
+ * - Com `Sec-Fetch-Site: cross-site`: sempre bloqueia.
+ * - Sem `Origin`: valida `Referer` ou sinais same-origin do browser.
+ * - Em produção, requests sem sinal de browser confiável são bloqueados.
  */
 
 export function getExpectedOrigin(req: Request): string | null {
@@ -19,18 +18,41 @@ export function getExpectedOrigin(req: Request): string | null {
   return `${proto}://${host}`;
 }
 
+function refererMatchesExpected(req: Request, expected: string): boolean {
+  const referer = req.headers.get('referer');
+  if (!referer) return false;
+
+  try {
+    return new URL(referer).origin === expected;
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Função pública `isAllowedOrigin` do projeto.
- *
- * @param {Request} req - Objeto da requisição.
- * @returns {boolean} Retorna um valor do tipo `boolean`.
  */
 export function isAllowedOrigin(req: Request): boolean {
-  const origin = req.headers.get('origin');
-  if (!origin) return true;
-
   const expected = getExpectedOrigin(req);
-  if (!expected) return true;
+  const origin = req.headers.get('origin');
+  const secFetchSite = req.headers.get('sec-fetch-site');
 
-  return origin === expected;
+  if (secFetchSite === 'cross-site') {
+    return false;
+  }
+
+  if (origin) {
+    if (!expected) return false;
+    return origin === expected;
+  }
+
+  if (expected && refererMatchesExpected(req, expected)) {
+    return true;
+  }
+
+  if (secFetchSite === 'same-origin' || secFetchSite === 'same-site') {
+    return true;
+  }
+
+  return process.env.NODE_ENV !== 'production';
 }
