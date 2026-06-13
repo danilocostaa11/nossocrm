@@ -1,12 +1,15 @@
 'use client';
 
 import React from 'react';
+import { usePathname } from 'next/navigation';
 import { Download, X } from 'lucide-react';
 import { useInstallState } from './useInstallState';
 
 export function InstallBanner() {
+  const pathname = usePathname();
   const { isEligible, isDismissed, canPrompt, platformHint, promptInstall, dismiss } = useInstallState();
 
+  if (pathname === '/login' || pathname?.startsWith('/install')) return null;
   if (!isEligible || isDismissed) return null;
 
   return (

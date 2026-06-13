@@ -346,3 +346,13 @@ body {
     opacity: 0;
   }
 }
+
+/* Login: keep white inputs (incl. browser autofill) on dark card */
+.login-form input:-webkit-autofill,
+.login-form input:-webkit-autofill:hover,
+.login-form input:-webkit-autofill:focus {
+  -webkit-text-fill-color: #0f172a;
+  -webkit-box-shadow: 0 0 0 1000px #ffffff inset;
+  caret-color: #0f172a;
+  transition: background-color 9999s ease-out 0s;
+}
