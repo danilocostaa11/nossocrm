@@ -2,9 +2,9 @@ import type { MetadataRoute } from 'next';
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'NossoCRM',
-    short_name: 'NossoCRM',
-    description: 'CRM Inteligente para Gestão de Vendas',
+    name: 'YumIA CRM',
+    short_name: 'YumIA',
+    description: 'CRM Inteligente para Gestão de Vendas — YumIA',
     start_url: '/boards',
     display: 'standalone',
     background_color: '#ffffff',

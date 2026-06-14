@@ -52,6 +52,7 @@ import { prefetchRoute, RouteName } from '@/lib/prefetch';
 import { isDebugMode, enableDebugMode, disableDebugMode } from '@/lib/debug';
 import { SkipLink } from '@/lib/a11y';
 import { useResponsiveMode } from '@/hooks/useResponsiveMode';
+import { BrandMark } from '@/components/branding/BrandMark';
 import { BottomNav, MoreMenuSheet, NavigationRail } from '@/components/navigation';
 
 // Lazy load AI Assistant (deprecated - using UIChat now)
@@ -239,12 +240,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       >
         <div className={`h-16 flex items-center border-b border-[var(--color-border-subtle)] transition-all duration-300 px-5 ${sidebarCollapsed ? 'justify-center px-0' : 'justify-between'}`}>
           <div className={`flex items-center transition-all duration-300 ${sidebarCollapsed ? 'gap-0 justify-center' : 'gap-3'}`}>
-            <div className="w-9 h-9 bg-gradient-to-br from-primary-500 to-primary-700 rounded-xl flex items-center justify-center text-white font-bold text-lg shadow-lg shadow-primary-500/20 shrink-0" aria-hidden="true">
-              N
-            </div>
-            <span className={`text-xl font-bold font-display tracking-tight text-slate-900 dark:text-white whitespace-nowrap overflow-hidden transition-all duration-300 ${sidebarCollapsed ? 'w-0 opacity-0' : 'w-auto opacity-100'}`}>
-              NossoCRM
-            </span>
+            <BrandMark showLabel={!sidebarCollapsed} size="md" />
           </div>
 
           {/* Header Toggle Button - Only visible when expanded */}

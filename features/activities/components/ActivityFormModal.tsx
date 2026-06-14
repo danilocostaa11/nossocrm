@@ -126,11 +126,18 @@ export const ActivityFormModal: React.FC<ActivityFormModalProps> = ({
                 onChange={e => setFormData({ ...formData, dealId: e.target.value })}
               >
                 <option value="">Selecione...</option>
-                {deals.map(deal => (
-                  <option key={deal.id} value={deal.id}>
-                    {deal.title}
-                  </option>
-                ))}
+                {deals.map(deal => {
+                  const contactLabel =
+                    'contactName' in deal && deal.contactName && deal.contactName !== 'Sem contato'
+                      ? ` — ${deal.contactName}`
+                      : '';
+                  return (
+                    <option key={deal.id} value={deal.id}>
+                      {deal.title}
+                      {contactLabel}
+                    </option>
+                  );
+                })}
               </select>
             </div>
           </div>

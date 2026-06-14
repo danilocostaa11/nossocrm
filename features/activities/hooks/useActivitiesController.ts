@@ -9,7 +9,7 @@ import {
   useUpdateActivity,
   useDeleteActivity,
 } from '@/lib/query/hooks/useActivitiesQuery';
-import { useDeals } from '@/lib/query/hooks/useDealsQuery';
+import { useDealsView } from '@/lib/query/hooks/useDealsQuery';
 import { useContacts, useCompanies } from '@/lib/query/hooks/useContactsQuery';
 import { useRealtimeSync } from '@/lib/realtime/useRealtimeSync';
 
@@ -25,7 +25,11 @@ export const useActivitiesController = () => {
 
   // TanStack Query hooks
   const { data: activities = [], isLoading: activitiesLoading } = useActivities();
-  const { data: deals = [], isLoading: dealsLoading } = useDeals();
+  const { data: dealViews = [], isLoading: dealsLoading } = useDealsView();
+  const deals = useMemo(
+    () => dealViews.filter((d) => d.id && !d.id.startsWith('temp-')),
+    [dealViews]
+  );
   const { data: contacts = [], isLoading: contactsLoading } = useContacts();
   const { data: companies = [], isLoading: companiesLoading } = useCompanies();
   const createActivityMutation = useCreateActivity();
