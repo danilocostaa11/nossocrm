@@ -24,7 +24,7 @@ function createOpenRouterClient(apiKey: string) {
     baseURL: OPENROUTER_BASE_URL,
     headers: {
       'HTTP-Referer': process.env.NEXT_PUBLIC_APP_URL || 'https://nossocrm.vercel.app',
-      'X-Title': 'NossoCRM',
+      'X-Title': 'YumIA CRM',
     },
   });
 }

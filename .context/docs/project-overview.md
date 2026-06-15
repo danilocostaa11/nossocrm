@@ -14,7 +14,9 @@ scaffoldVersion: "2.0.0"
 
 **NossoCRM** (pacote `crmia-next`) é um CRM inteligente com assistente de IA integrado. Permite gerenciar pipeline de vendas (Kanban), contatos, atividades e relatórios, com um agente de IA capaz de analisar o pipeline, criar deals, gerar scripts de vendas e produzir um briefing diário (Inbox Inteligente).
 
-Público-alvo: equipes de vendas; o produto é self-hostável via fluxo Fork → Deploy na Vercel → wizard `/install` (sem necessidade de programar).
+**Demo atual:** rebrand visual **YumIA** (white-label para MVP comercial). Estado completo da sessão: [session-handoff.md](./session-handoff.md).
+
+Público-alvo: equipes de vendas; o produto é self-hostável via fluxo Fork → Deploy na Vercel → **Wizard** `/install` (provisiona Supabase, migrations, admin e redeploy em ~15–20 min).
 
 ## Stack
 
@@ -24,7 +26,7 @@ Público-alvo: equipes de vendas; o produto é self-hostável via fluxo Fork →
 | UI | Tailwind CSS v4, Radix UI primitives, lucide-react, framer-motion, recharts |
 | Dados | Supabase (Auth + Postgres + RLS), `pg` para acesso direto quando necessário |
 | Estado | TanStack Query v5 (facades em `context/`), Zustand (`lib/stores/`), immer |
-| IA | AI SDK v6 (`ai` + `@ai-sdk/anthropic`, `@ai-sdk/openai`, `@ai-sdk/google`) |
+| IA | AI SDK v6; provedores: Google, OpenAI, Anthropic, OpenRouter, OpenCode Zen — catálogo em `lib/ai/providersCatalog.ts` (BYOK) |
 | Formulários | react-hook-form + Zod (`lib/validations/`) |
 | Testes | Vitest 4 + happy-dom + React Testing Library + vitest-axe |
 | Deploy | Vercel |

@@ -24,6 +24,9 @@ scaffoldVersion: "2.0.0"
 | **Quick Script** | Script de vendas pronto/gerado por IA. `lib/supabase/quickScripts.ts` |
 | **Organization** | Tenant; toda linha de dados pertence a uma `organization_id` |
 | **Instance** | Instalação self-hosted do NossoCRM (fluxo `/install` + `app/api/setup-instance`) |
+| **YumIA** | Marca white-label aplicada na demo atual (logo, sidebar, login); código interno ainda referencia NossoCRM em alguns pontos |
+| **Wizard** | Assistente `/install` que automatiza fork → Vercel → Supabase (migrations, env vars, admin, redeploy). Ver `lib/installer/` |
+| **BYOK** | Bring Your Own Key — cliente configura e paga LLM (sem markup de tokens no produto) |
 
 ## Termos Técnicos
 
@@ -37,9 +40,12 @@ scaffoldVersion: "2.0.0"
 | **Service-role client** | Client Supabase com privilégios elevados (`lib/supabase/staticAdminClient.ts`); apenas server-side |
 | **AI Tools** | Funções expostas ao agente de IA em `lib/ai/tools.ts`; sempre filtram por `organization_id` |
 | **CRM Agent** | Agente de IA do produto, `lib/ai/crmAgent.ts`, servido por `app/api/ai/chat` |
+| **AIProvider** | `google` \| `openai` \| `anthropic` \| `openrouter` \| `opencode` — definido em `lib/ai/providersCatalog.ts` |
+| **OpenRouter** | Gateway OpenAI-compatible; base URL `https://openrouter.ai/api/v1`; chave em `ai_openrouter_key` |
+| **OpenCode Zen** | Gateway OpenAI-compatible; base URL `https://opencode.ai/zen/v1`; chave em `ai_opencode_key` |
+| **DEALS_VIEW_KEY** | Cache canônico `[...queryKeys.deals.lists(), 'view']` — Kanban e Atividades devem usar `useDealsView()` |
 | **MCP** | Model Context Protocol; servidor exposto em `app/api/mcp` (ver `docs/mcp.md`) |
 | **Public API** | API REST para integrações externas: `app/api/public/` + `lib/public-api/` (ver `docs/public-api.md`) |
-| **Installer/Wizard** | Fluxo de setup em `app/install` + `lib/installer/` que configura Supabase e variáveis |
 | **PREVC** | Workflow do dotcontext (Plan, Research, Execute, Verify, Commit) persistido em `.context/harness/` |
 
 ## Related Resources

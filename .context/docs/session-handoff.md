@@ -1,20 +1,39 @@
 # Session Handoff — NossoCRM / YumIA CRM
 
-> **Última atualização:** 2026-06-14  
+> **Última atualização:** 2026-06-15  
 > **Branch:** `main` (sincronizada com `origin/main`)  
+> **HEAD:** `67fb81e` — `feat(ai): Add OpenRouter/OpenCode providers and Anthropic 4.6 models`  
 > **Deploy produção:** https://nossocrm-delta-ten.vercel.app  
 > **Repo:** `danilocostaa11/nossocrm`
 
-Leia este arquivo **no início de um novo chat** antes de implementar qualquer coisa. Resume o objetivo do projeto, o que já foi feito nesta sessão e o que ficou pendente.
+Leia este arquivo **no início de um novo chat** antes de implementar qualquer coisa.
+
+**Prompt sugerido para novo chat:**
+
+> Leia `.context/docs/session-handoff.md` e continue de onde paramos.
 
 ---
 
 ## Objetivo do projeto (contexto de negócio)
 
-- Preparar o **NossoCRM** como **MVP/demo white-label** para vender a um amigo.
-- Marca exibida na demo: **YumIA** (rebrand visual aplicado; código interno ainda referencia NossoCRM em alguns prompts/backend).
-- Idioma do produto e comunicação com o usuário: **português**.
-- Precificação discutida (referência): faixa **R$ 12k–22k** (demo/produção) ou **R$ 8k + R$ 1,2k/mês**; custos de LLM/infra à parte.
+- **NossoCRM** vendido como **MVP/demo white-label** para um cliente/amigo (ainda sem acesso próprio).
+- Marca na demo: **YumIA** (rebrand visual); código interno ainda cita NossoCRM em prompts/PDF/labs.
+- Idioma: **português** (produto e comunicação com o usuário).
+- Posicionamento: **CRM + IA + integrações + instalador** — não é CRM simples no-code.
+- Demo forte; **não enterprise fechado** até RLS/UAT em produção.
+- **BYOK:** custos de LLM, Vercel e Supabase são do cliente.
+
+### Precificação de referência (proposta comercial)
+
+| Pacote | Preço | Público |
+|--------|-------|---------|
+| **Starter** | R$ 4.900 (único) | Self-serve via Wizard |
+| **Professional** | R$ 12.900 (único) | Implantação assistida — recomendado para o cliente atual |
+| **Partner White-label** | R$ 24.900 + renovação anual | Integradores / software house |
+
+**Add-ons:** Suporte R$ 890–1.790/mês · Hora avulsa R$ 220/h · **Setup Enterprise** R$ 3.500 (RLS, UAT, checklist prod) · Upsell “IA pronta” R$ 497.
+
+**Canvas de precificação (Cursor, fora do repo):** `~/.cursor/projects/.../canvases/nossocrm-pricing.canvas.tsx`
 
 ---
 
@@ -25,88 +44,110 @@ Leia este arquivo **no início de um novo chat** antes de implementar qualquer c
 | Framework | Next.js 16 App Router, React 19, TypeScript strict |
 | Backend | Supabase (Auth + Postgres + RLS) |
 | State | TanStack Query — facades em `context/`, hooks em `lib/query/` |
-| Auth | `proxy.ts` + `lib/supabase/middleware.ts` (não `middleware.ts`); `/api/*` excluído do proxy |
-| AI | Vercel AI SDK v6, `/api/ai/chat`, tools em `lib/ai/tools.ts` (sempre filtrar por `organization_id`) |
+| Auth | `proxy.ts` + `lib/supabase/middleware.ts` (não `middleware.ts`); `/api/*` excluído |
+| AI | SDK v6, `/api/ai/chat`, tools em `lib/ai/tools.ts` (sempre filtrar por `organization_id`) |
+| Qualidade | ~84k LOC TS/TSX, **102 testes**, lint/typecheck/build OK |
 
 ### Cache Rules (CRÍTICO — não quebrar)
 
-- **Deals:** única fonte de verdade = `DEALS_VIEW_KEY` = `[...queryKeys.deals.lists(), 'view']`
+- **Deals:** fonte única = `DEALS_VIEW_KEY` = `[...queryKeys.deals.lists(), 'view']`
 - Mutations/Realtime/optimistic de deals **sempre** escrevem nessa key
 - **Nunca** usar `queryKeys.deals.list({ filter })` para optimistic updates
-- **Atividades:** ao listar negócios para associar, usar `useDealsView()` — **não** `useDeals()` (cache separado = dropdown vazio)
+- **Atividades:** listar negócios para associar → `useDealsView()` — **não** `useDeals()`
 
 Comandos: `npm run dev` | `npm run build` | `npm run lint` | `npm run typecheck` | `npm run test:run`
 
 ---
 
-## Commits recentes na `main` (ordem cronológica)
+## Commits recentes na `main`
 
 | Commit | Descrição |
 |--------|-----------|
-| `438b3c7` | Hardening RBAC, CSRF, UI responsiva (inbox/calendário), error boundary, migrações Supabase no repo |
-| `51f2dad` | Login escuro com inputs brancos (layout original restaurado) |
-| `e3f5b5c` | Validação de chave de API de IA **no servidor** (evita CORS no browser) |
-| `57b71e6` | Fix atividades: `useDealsView` no dropdown + rebrand YumIA |
+| `67fb81e` | OpenRouter + OpenCode Zen + Anthropic 4.6/4.8; catálogo central; migração keys |
+| `57b71e6` | Fix atividades (`useDealsView`) + rebrand YumIA |
+| `e3f5b5c` | Validação de chave IA no servidor (CORS) |
+| `51f2dad` | Login escuro, inputs brancos |
+| `438b3c7` | Hardening RBAC, CSRF, UI mobile, migrações RLS no repo |
 
 ---
 
-## O que foi implementado nesta conversa
+## O que está implementado (estado atual)
 
-### 1. Rebrand YumIA (commit `57b71e6`)
+### 1. Rebrand YumIA (`57b71e6`)
 
 - Logo: `public/branding/yumia-logo.png`
-- Componente: `components/branding/BrandMark.tsx` (ícone recortado + texto dourado "YumIA")
-- Sidebar: `components/Layout.tsx`
-- Tablet rail: `components/navigation/NavigationRail.tsx`
-- Login: `app/login/page.tsx`
-- Metadados: `app/layout.tsx` (title **YumIA CRM**), `app/manifest.ts`
-- Textos: `InstallBanner`, `ConsentModal`, setup page, `UIChat` → **YumIA Pilot**
+- `components/branding/BrandMark.tsx`
+- Sidebar, login, manifest, PWA banner, consent, setup, chat → **YumIA / YumIA Pilot**
 
-**Ainda diz "NossoCRM" (não crítico para demo):** prompts em `lib/ai/crmAgent.ts`, PDF de relatórios, telas de labs/mock, comentários internos.
+**Ainda “NossoCRM” (só comentários internos):** `types/types.ts`, `lib/query/index.tsx`, `lib/a11y/index.ts`.
 
-### 2. Fix aba Atividades — negócios não apareciam no dropdown (commit `57b71e6`)
+### 2. Fix Atividades — dropdown de negócios (`57b71e6`)
 
-**Sintoma:** Ao criar atividade, "Negócio Relacionado" só mostrava "Selecione..."; contato não associava.
+- **Causa:** cache `useDeals()` ≠ cache do Kanban (`useDealsView()`).
+- **Fix:** `features/activities/hooks/useActivitiesController.ts` → `useDealsView()`; filtro `temp-*`.
+- **Contato:** só via negócio selecionado (`deal.contactId`); sem campo contato direto no form.
 
-**Causa:** `useActivitiesController` usava `useDeals()` (cache `queryKeys.deals.lists()`), enquanto o Kanban usa `useDealsView()` (`DEALS_VIEW_KEY`). Negócios criados no board não apareciam na aba Atividades.
+### 3. Configurações de IA (`67fb81e`)
 
-**Correção:**
-- `features/activities/hooks/useActivitiesController.ts` → `useDealsView()` + filtro de ids `temp-*`
-- `features/activities/components/ActivityFormModal.tsx` → label `Título — Contato` quando disponível
+**Provedores:** `google` | `openai` | `anthropic` | `openrouter` | `opencode`
 
-**Associação contato:** O formulário **não tem campo de contato direto**. Contato vem do `deal.contactId` ao selecionar um negócio (`handleSubmit` em `useActivitiesController.ts`).
+**Anthropic (direto):** `claude-sonnet-4-6` (recomendado), `claude-opus-4-8`, `claude-haiku-4-5`, legado 4.5
 
-### 3. Fix validação chave de IA (commit `e3f5b5c`)
+**OpenRouter:** gateway OpenAI-compatible (`https://openrouter.ai/api/v1`)
 
-**Sintoma:** "Erro de conexão" / "Chave Inválida" ao salvar chave Anthropic/OpenAI nas configurações.
+**OpenCode Zen:** gateway (`https://opencode.ai/zen/v1`)
 
-**Causa:** Validação no browser via `fetch` direto → bloqueio **CORS**.
+**Arquivos-chave:**
+- `lib/ai/providersCatalog.ts` — catálogo UI + tipos
+- `lib/ai/orgAiCredentials.ts` — resolve chave/modelo de `organization_settings`
+- `lib/ai/config.ts` — `getModel()` por provider
+- `lib/ai/validateApiKey.ts` + `app/api/settings/ai/validate/route.ts`
+- `app/api/settings/ai/route.ts` — persiste `aiOpenrouterKey`, `aiOpencodeKey`
+- `features/settings/components/AIConfigSection.tsx`
 
-**Correção:**
-- `lib/ai/validateApiKey.ts` — validação server-side
-- `app/api/settings/ai/validate/route.ts` — POST admin-only
-- `features/settings/components/AIConfigSection.tsx` — chama `/api/settings/ai/validate`
+**Migração obrigatória para OpenRouter/OpenCode em prod:**
 
-**Nota UX:** No campo "Outro (Digitar ID)" de modelo, usar ID da lista (ex.: `claude-sonnet-4-5`), não e-mail.
+`supabase/migrations/20260615120000_ai_openrouter_opencode_keys.sql`  
+(colunas `ai_openrouter_key`, `ai_opencode_key` em `organization_settings`)
 
-### 4. Login (commit `51f2dad`)
+**Limitações:** Thinking, Web Search e Prompt Caching só Google/Anthropic direto — não nos gateways.
 
-- Tela escura, inputs brancos, banner PWA oculto em `/login` (`InstallBanner.tsx`).
+### 4. Validação chave IA server-side (`e3f5b5c`)
 
-### 5. Hardening MVP (commit `438b3c7`)
+Browser não chama APIs dos provedores (CORS). UI chama `POST /api/settings/ai/validate`.
 
-- RBAC em tools AI, CSRF, rotas export/import, UI mobile inbox/calendário, etc.
-- Migrações Supabase adicionadas ao repo — **não aplicadas em prod** (decisão: adiar pós-demo/venda).
+### 5. Wizard /install (instalador)
+
+Assistente em `/install` que provisiona fork → Vercel → Supabase:
+
+1. `/install/start` — credenciais
+2. `/install/wizard` — progresso
+3. Backend `/api/installer/run` — health, keys, migrations, edge functions, bootstrap admin, redeploy
+
+Se já instalado, `/install` redireciona ao dashboard. **Diferencial comercial** na precificação.
+
+### 7. Rebrand YumIA — superfícies restantes (sessão atual)
+
+- Prompts IA: `lib/ai/crmAgent.ts`, `lib/ai/prompts/catalog.ts` → **YumIA Pilot**
+- OpenRouter headers: `lib/ai/config.ts`, `crmAgent.ts` → **YumIA CRM**
+- PDF relatórios: `features/reports/utils/generateReportPDF.ts` → rodapé **YumIA CRM**
+- Cockpit + labs: **YumIA Pilot** / **YumIA Copilot**
+- API pública OpenAPI + Swagger docs → **YumIA CRM Public API**
+- PWA: `public/icons/icon.svg`, `maskable.svg` + `app/manifest.ts` (dourado `#d4af37`, fundo `#0a0a0b`)
+
+### 6. Escopo funcional (para venda)
+
+Kanban, contatos/empresas, atividades, dashboard, PDF, inbox briefing IA, chat com tools, fila decisões, cockpit deal, API REST + OpenAPI, webhooks (Hotmart/n8n/Make), MCP, multi-tenant, RBAC, import/export, audit log.
 
 ---
 
-## Pendências explícitas (não fazer sem combinar)
+## Pendências (não fazer sem combinar)
 
-1. **Migrações Supabase RLS** — arquivos no repo; aplicar em prod só após venda/acordo.
-2. **Rebrand completo** — prompts AI, PDF reports, labs (opcional).
-3. **Favicon / ícones PWA** — ainda SVG genérico; pode trocar pelo escudo YumIA.
-4. **Testar em prod** — salvamento de chave Anthropic após deploy `e3f5b5c`; dropdown de negócios após `57b71e6`.
-5. **Campo contato direto** na atividade — não existe hoje; só via negócio (feature futura se o usuário pedir).
+1. **Aplicar migrações Supabase em prod** — incl. RLS hardening (`438b3c7`) e keys OpenRouter/OpenCode (`20260615120000_*`).
+2. **Testar em prod** — dropdown negócios em Atividades; salvar/validar chaves IA (todos os 5 providers).
+3. ~~**Rebrand completo**~~ — **feito** (prompts, PDF, PWA icons, OpenAPI, cockpit/labs). Restam só comentários internos opcionais.
+4. **Setup Enterprise** — UAT, monitoramento, backup (upsell R$ 3.500).
+5. **Campo contato direto** em atividade — feature futura; hoje só via negócio.
 
 ---
 
@@ -114,28 +155,36 @@ Comandos: `npm run dev` | `npm run build` | `npm run lint` | `npm run typecheck`
 
 | Área | Caminhos |
 |------|----------|
-| Login | `app/login/page.tsx` |
+| Handoff | `.context/docs/session-handoff.md` (este arquivo) |
 | Branding | `components/branding/BrandMark.tsx`, `public/branding/yumia-logo.png` |
 | Atividades | `features/activities/hooks/useActivitiesController.ts`, `ActivityFormModal.tsx` |
-| Deals cache | `lib/query/queryKeys.ts` (`DEALS_VIEW_KEY`), `lib/query/hooks/useDealsQuery.ts` |
-| AI settings | `features/settings/components/AIConfigSection.tsx`, `app/api/settings/ai/validate/route.ts` |
-| AI tools/RBAC | `lib/ai/tools.ts`, `app/api/ai/chat/route.ts` |
+| Deals cache | `lib/query/queryKeys.ts`, `lib/query/hooks/useDealsQuery.ts` |
+| AI catálogo | `lib/ai/providersCatalog.ts`, `lib/ai/orgAiCredentials.ts` |
+| AI settings UI | `features/settings/components/AIConfigSection.tsx` |
+| AI validate API | `app/api/settings/ai/validate/route.ts` |
+| AI runtime | `lib/ai/config.ts`, `lib/ai/crmAgent.ts`, `app/api/ai/chat/route.ts` |
+| Installer | `app/install/`, `app/api/installer/run/route.ts`, `lib/installer/` |
 | Contacts export | `app/api/contacts/export/route.ts` |
-| Docs agentes | `AGENTS.md`, `.context/docs/README.md` |
-
----
-
-## Como continuar em um novo chat
-
-1. Dizer: *"Leia `.context/docs/session-handoff.md` e continue de onde paramos."*
-2. Ou referenciar `@.context/docs/session-handoff.md` no Cursor.
-3. Verificar `git log -5` e deploy Vercel antes de assumir estado.
+| Migrações | `supabase/migrations/` |
 
 ---
 
 ## Decisões do usuário (não reverter sem perguntar)
 
-- **Não commitar** mudanças a menos que peça explicitamente.
-- **Não push force** para main.
+- **Não commitar** a menos que peça explicitamente.
+- **Não push force** para `main`.
 - Responder em **português**.
-- Demo prioritária sobre hardening de banco em prod (migrações adiadas).
+- Demo prioritária; hardening RLS em prod **adiado** até pós-venda/acordo.
+- Cliente ainda **não tem acesso** — demo preparada para apresentação antes de entrega.
+
+---
+
+## Como validar estado antes de codar
+
+```bash
+git log -5 --oneline
+git status
+npm run typecheck && npm run lint && npm run test:run
+```
+
+Confirmar deploy Vercel após pushes em `main`.

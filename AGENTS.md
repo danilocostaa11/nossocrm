@@ -13,7 +13,7 @@
 - **Proxy auth**: `proxy.ts` + `lib/supabase/middleware.ts` (not middleware.ts); excludes `/api/*`
 - **State**: TanStack Query with facades in `context/`, queries in `lib/query/`
 - **Cache**: Single Source of Truth pattern (see Cache Rules below)
-- **AI**: SDK v6, chat via `/api/ai/chat`, tools in `lib/ai/tools.ts` (always filter by `organization_id`)
+- **AI**: SDK v6, chat via `/api/ai/chat`, tools in `lib/ai/tools.ts` (always filter by `organization_id`); providers catalog in `lib/ai/providersCatalog.ts` (google, openai, anthropic, openrouter, opencode)
 
 ## Cache Rules (CRITICAL)
 - **One cache per entity**: All operations (CRUD, Realtime, optimistic) use the SAME cache
@@ -21,6 +21,7 @@
 - **Other entities**: Use `queryKeys.{entity}.lists()` for mutations
 - **NEVER use** `queryKeys.*.list({ filter })` for optimistic updates - those are separate caches
 - **Prefer** `setQueryData` over `invalidateQueries` for instant UI updates
+- **Atividades:** use `useDealsView()` when listing deals for association — not `useDeals()` (separate cache = empty dropdown)
 
 ## Code Style
 - TypeScript 5.x strict, React 19, Tailwind CSS v4, Radix UI primitives

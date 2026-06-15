@@ -400,7 +400,7 @@ function buildContextPrompt(options: CRMCallOptions): string {
 /**
  * Base instructions for the CRM Agent
  */
-const BASE_INSTRUCTIONS = `Você é o NossoCRM Pilot, um assistente de vendas inteligente. 🚀
+const BASE_INSTRUCTIONS = `Você é o YumIA Pilot, um assistente de vendas inteligente. 🚀
 
 PERSONALIDADE:
 - Seja proativo, amigável e analítico
@@ -499,7 +499,7 @@ export async function createCRMAgent(
                     baseURL: 'https://openrouter.ai/api/v1',
                     headers: {
                         'HTTP-Referer': process.env.NEXT_PUBLIC_APP_URL || 'https://nossocrm.vercel.app',
-                        'X-Title': 'NossoCRM',
+                        'X-Title': 'YumIA CRM',
                     },
                     fetch: createRetryingFetch(fetch, {
                         label: 'OpenRouter',

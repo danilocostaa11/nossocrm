@@ -68,10 +68,15 @@ export const AI_PROVIDERS: readonly AIProviderDefinition[] = [
     name: 'OpenRouter',
     apiKeyHint: 'sk-or-...',
     models: [
-      { id: 'anthropic/claude-sonnet-4.6', name: 'Claude Sonnet 4.6', description: 'Recomendado via OpenRouter', price: 'Variável' },
+      { id: 'deepseek/deepseek-v4-flash', name: 'DeepSeek V4 Flash', description: 'Recomendado - Ultra rápido · coding & agentes', price: '$0.09 / $0.18' },
+      { id: 'anthropic/claude-sonnet-4.6', name: 'Claude Sonnet 4.6', description: 'Balanceado via OpenRouter', price: 'Variável' },
       { id: 'anthropic/claude-opus-4.8', name: 'Claude Opus 4.8', description: 'Premium via OpenRouter', price: 'Variável' },
       { id: 'openai/gpt-4.1', name: 'GPT-4.1', description: 'OpenAI flagship', price: 'Variável' },
       { id: 'google/gemini-2.5-flash', name: 'Gemini 2.5 Flash', description: 'Rápido', price: 'Variável' },
+      { id: 'xiaomi/mimo-v2.5', name: 'MiMo V2.5', description: 'Agentes · metade do custo Pro', price: '$0.14 / $0.28' },
+      { id: 'minimax/minimax-m3', name: 'MiniMax M3', description: 'Multimodal · agentes longos', price: '$0.30 / $1.20' },
+      { id: 'xiaomi/mimo-v2.5-pro', name: 'MiMo V2.5 Pro', description: 'Flagship agentic · SWE-bench', price: '$0.435 / $0.87' },
+      { id: 'qwen/qwen3.7-max', name: 'Qwen3.7 Max', description: 'Flagship Qwen · coding & office', price: '$1.25 / $3.75' },
     ],
   },
   {

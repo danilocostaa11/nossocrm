@@ -3,7 +3,7 @@
 Welcome to the repository knowledge base. Start with the project overview, then dive into specific guides as needed.
 
 ## Core Guides
-- [**Session Handoff (estado atual do projeto)**](./session-handoff.md)
+- [**Session Handoff — ler primeiro em chat novo**](./session-handoff.md) (YumIA demo, IA providers, precificação, pendências)
 - [Project Overview](./project-overview.md)
 - [Architecture Notes](./architecture.md)
 - [Development Workflow](./development-workflow.md)
