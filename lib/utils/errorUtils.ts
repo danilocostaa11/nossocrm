@@ -28,6 +28,8 @@ export const getErrorMessage = (error: unknown): string => {
         'Auth session missing!': 'Sessão expirada. Por favor, faça login novamente.',
         'User already registered': 'Este email já está cadastrado.',
         'Rate limit exceeded': 'Muitas tentativas. Por favor, aguarde um momento.',
+        'email rate limit exceeded': 'Limite de e-mails atingido. Aguarde cerca de 1 hora antes de tentar de novo.',
+        'over_email_send_rate_limit': 'Limite de e-mails atingido. Aguarde cerca de 1 hora antes de tentar de novo.',
     };
 
     // Verificação exata
@@ -39,6 +41,9 @@ export const getErrorMessage = (error: unknown): string => {
     if (message.includes('weak password')) return 'Sua senha é muito fraca.';
     if (message.includes('already registered')) return 'Este email já está em uso.';
     if (message.includes('invalid login')) return 'Credenciais inválidas.';
+    if (message.includes('email rate limit') || message.includes('over_email_send_rate_limit')) {
+        return 'Limite de e-mails atingido. Aguarde cerca de 1 hora ou configure SMTP no Supabase (Authentication → SMTP).';
+    }
     if (message.includes('unexpected error')) return 'Ocorreu um erro inesperado. Tente novamente.';
 
     // Retorno original se não houver tradução (fallback)
