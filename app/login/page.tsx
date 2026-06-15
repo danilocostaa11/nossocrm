@@ -58,12 +58,15 @@ export default function LoginPage() {
                 throw new Error('Supabase não configurado. Configure as variáveis de ambiente.')
             }
 
-            const redirectTo = `${window.location.origin}/auth/confirm?next=${encodeURIComponent('/login/reset-password')}`
-            const { error: resetError } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-                redirectTo,
+            const res = await fetch('/api/auth/forgot-password', {
+                method: 'POST',
+                headers: { 'content-type': 'application/json' },
+                body: JSON.stringify({ email: email.trim() }),
             })
-
-            if (resetError) throw resetError
+            const data = (await res.json().catch(() => null)) as { error?: string } | null
+            if (!res.ok) {
+                throw new Error(data?.error || `Erro ao enviar e-mail (HTTP ${res.status})`)
+            }
 
             setInfo(
                 'Enviamos um link de recuperação para seu e-mail. Abra o link para definir uma nova senha.'
