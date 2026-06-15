@@ -75,6 +75,30 @@ async function sleep(ms: number) {
   await new Promise((r) => setTimeout(r, ms));
 }
 
+export async function runSupabaseDatabaseQuery(params: {
+  projectRef: string;
+  accessToken: string;
+  query: string;
+}): Promise<
+  | { ok: true; response: unknown }
+  | { ok: false; error: string; status?: number; response?: unknown }
+> {
+  const res = await supabaseManagementFetch(
+    `/v1/projects/${encodeURIComponent(params.projectRef)}/database/query`,
+    params.accessToken,
+    {
+      method: 'POST',
+      body: JSON.stringify({ query: params.query.trim() }),
+    }
+  );
+
+  if (!res.ok) {
+    return { ok: false, error: res.error, status: res.status, response: res.data };
+  }
+
+  return { ok: true, response: res.data };
+}
+
 export async function getSupabaseProject(params: {
   accessToken: string;
   projectRef: string;

@@ -4,37 +4,42 @@ import React, { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { getErrorMessage } from '@/lib/utils/errorUtils'
-import { Loader2, Mail, Lock, ArrowRight } from 'lucide-react'
+import { ArrowLeft, ArrowRight, KeyRound, Loader2, Lock, Mail } from 'lucide-react'
 import { BrandMark } from '@/components/branding/BrandMark'
 
-/**
- * Componente React `LoginPage`.
- * @returns {Element} Retorna um valor do tipo `Element`.
- */
+type LoginMode = 'sign-in' | 'forgot-password'
+
 export default function LoginPage() {
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
+    const [mode, setMode] = useState<LoginMode>('sign-in')
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
+    const [info, setInfo] = useState<string | null>(null)
     const router = useRouter()
     const supabase = createClient()
+
+    const resetFeedback = () => {
+        setError(null)
+        setInfo(null)
+    }
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
         setLoading(true)
-        setError(null)
+        resetFeedback()
 
         try {
             if (!supabase) {
                 throw new Error('Supabase não configurado. Configure as variáveis de ambiente.')
             }
 
-            const { error } = await supabase.auth.signInWithPassword({
+            const { error: signInError } = await supabase.auth.signInWithPassword({
                 email,
                 password,
             })
 
-            if (error) throw error
+            if (signInError) throw signInError
             router.push('/dashboard')
         } catch (err) {
             setError(getErrorMessage(err))
@@ -43,9 +48,37 @@ export default function LoginPage() {
         }
     }
 
+    const handleForgotPassword = async (e: React.FormEvent) => {
+        e.preventDefault()
+        setLoading(true)
+        resetFeedback()
+
+        try {
+            if (!supabase) {
+                throw new Error('Supabase não configurado. Configure as variáveis de ambiente.')
+            }
+
+            const redirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent('/login/reset-password')}`
+            const { error: resetError } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+                redirectTo,
+            })
+
+            if (resetError) throw resetError
+
+            setInfo(
+                'Enviamos um link de recuperação para seu e-mail. Abra o link para definir uma nova senha.'
+            )
+        } catch (err) {
+            setError(getErrorMessage(err))
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    const isForgotMode = mode === 'forgot-password'
+
     return (
         <div className="min-h-screen flex items-center justify-center bg-dark-bg relative overflow-hidden">
-            {/* Background Effects */}
             <div className="absolute top-0 left-0 w-full h-full overflow-hidden z-0 pointer-events-none">
                 <div className="absolute -top-[20%] -right-[10%] w-[50%] h-[50%] bg-primary-500/20 rounded-full blur-[120px]" />
                 <div className="absolute top-[40%] -left-[10%] w-[40%] h-[40%] bg-blue-500/20 rounded-full blur-[100px]" />
@@ -57,15 +90,20 @@ export default function LoginPage() {
                 </div>
                 <div className="text-center mb-8">
                     <h1 className="text-4xl font-bold text-white font-display tracking-tight mb-2">
-                        Bem-vindo de volta
+                        {isForgotMode ? 'Recuperar senha' : 'Bem-vindo de volta'}
                     </h1>
                     <p className="text-slate-400">
-                        Entre na sua conta para continuar.
+                        {isForgotMode
+                            ? 'Informe seu e-mail para receber o link de redefinição.'
+                            : 'Entre na sua conta para continuar.'}
                     </p>
                 </div>
 
                 <div className="bg-dark-card border border-white/10 rounded-2xl shadow-xl p-8 backdrop-blur-sm">
-                    <form className="login-form space-y-6" onSubmit={handleSubmit}>
+                    <form
+                        className="login-form space-y-6"
+                        onSubmit={isForgotMode ? handleForgotPassword : handleSubmit}
+                    >
                         <div>
                             <label htmlFor="email-address" className="block text-sm font-medium text-white mb-1.5">
                                 Email
@@ -81,7 +119,7 @@ export default function LoginPage() {
                                     autoComplete="email"
                                     required
                                     aria-required="true"
-                                    aria-describedby={error ? "login-error" : undefined}
+                                    aria-describedby={error ? 'login-error' : info ? 'login-info' : undefined}
                                     className="block w-full pl-10 pr-3 py-2.5 border border-slate-200 rounded-xl bg-white text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500 transition-all sm:text-sm"
                                     placeholder="seu@email.com"
                                     value={email}
@@ -90,29 +128,44 @@ export default function LoginPage() {
                             </div>
                         </div>
 
-                        <div>
-                            <label htmlFor="password" className="block text-sm font-medium text-white mb-1.5">
-                                Senha
-                            </label>
-                            <div className="relative">
-                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                    <Lock className="h-5 w-5 text-slate-400" />
+                        {!isForgotMode && (
+                            <div>
+                                <div className="flex items-center justify-between mb-1.5">
+                                    <label htmlFor="password" className="block text-sm font-medium text-white">
+                                        Senha
+                                    </label>
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            resetFeedback()
+                                            setMode('forgot-password')
+                                        }}
+                                        className="inline-flex items-center gap-1.5 text-xs font-medium text-primary-300 hover:text-primary-200 transition-colors"
+                                    >
+                                        <KeyRound className="h-3.5 w-3.5" aria-hidden="true" />
+                                        Esqueceu a senha?
+                                    </button>
                                 </div>
-                                <input
-                                    id="password"
-                                    name="password"
-                                    type="password"
-                                    autoComplete="current-password"
-                                    required
-                                    aria-required="true"
-                                    aria-describedby={error ? "login-error" : undefined}
-                                    className="block w-full pl-10 pr-3 py-2.5 border border-slate-200 rounded-xl bg-white text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500 transition-all sm:text-sm"
-                                    placeholder="••••••••"
-                                    value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
-                                />
+                                <div className="relative">
+                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                        <Lock className="h-5 w-5 text-slate-400" />
+                                    </div>
+                                    <input
+                                        id="password"
+                                        name="password"
+                                        type="password"
+                                        autoComplete="current-password"
+                                        required
+                                        aria-required="true"
+                                        aria-describedby={error ? 'login-error' : undefined}
+                                        className="block w-full pl-10 pr-3 py-2.5 border border-slate-200 rounded-xl bg-white text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500 transition-all sm:text-sm"
+                                        placeholder="••••••••"
+                                        value={password}
+                                        onChange={(e) => setPassword(e.target.value)}
+                                    />
+                                </div>
                             </div>
-                        </div>
+                        )}
 
                         {error && (
                             <div
@@ -125,6 +178,17 @@ export default function LoginPage() {
                             </div>
                         )}
 
+                        {info && (
+                            <div
+                                id="login-info"
+                                role="status"
+                                aria-live="polite"
+                                className="p-3 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-500/20 text-emerald-700 dark:text-emerald-300 text-sm text-center"
+                            >
+                                {info}
+                            </div>
+                        )}
+
                         <button
                             type="submit"
                             disabled={loading}
@@ -132,6 +196,11 @@ export default function LoginPage() {
                         >
                             {loading ? (
                                 <Loader2 className="animate-spin h-5 w-5" />
+                            ) : isForgotMode ? (
+                                <>
+                                    Enviar link de recuperação
+                                    <ArrowRight className="ml-2 h-4 w-4" />
+                                </>
                             ) : (
                                 <>
                                     Entrar
@@ -139,6 +208,20 @@ export default function LoginPage() {
                                 </>
                             )}
                         </button>
+
+                        {isForgotMode && (
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    resetFeedback()
+                                    setMode('sign-in')
+                                }}
+                                className="w-full inline-flex items-center justify-center gap-2 text-sm text-slate-400 hover:text-white transition-colors"
+                            >
+                                <ArrowLeft className="h-4 w-4" />
+                                Voltar para o login
+                            </button>
+                        )}
                     </form>
                 </div>
 

@@ -142,4 +142,14 @@ describe('updateSession (Proxy/Supabase)', () => {
     expect(urlArg).toMatchObject({ pathname: '/dashboard' })
     expect(res).toMatchObject({ kind: 'redirect' })
   })
+
+  it('permite /login/reset-password mesmo autenticado (redefinição de senha)', async () => {
+    mocks.state.currentUser = { id: 'user-1' }
+    const req = makeRequest('/login/reset-password')
+
+    const res = await updateSession(req)
+
+    expect(mocks.nextResponseMock.redirect).not.toHaveBeenCalled()
+    expect(res).toMatchObject({ kind: 'next' })
+  })
 })

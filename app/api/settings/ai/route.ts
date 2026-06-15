@@ -3,6 +3,12 @@ import { createClient, createStaticAdminClient } from '@/lib/supabase/server';
 import { isAllowedOrigin } from '@/lib/security/sameOrigin';
 import { AI_PROVIDER_ENUM } from '@/lib/ai/providersCatalog';
 import type { AIProvider } from '@/lib/ai/providersCatalog';
+import { extractProjectRefFromSupabaseUrl } from '@/lib/installer/edgeFunctions';
+import {
+  ensureOrganizationSettingsAiGatewayColumns,
+  isMissingOrgAiGatewayColumn,
+  schemaMissingAiGatewayColumnsMessage,
+} from '@/lib/supabase/ensureAiGatewayColumns';
 
 function json<T>(body: T, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -28,6 +34,45 @@ const UpdateOrgAISettingsSchema = z
 
 const ORG_AI_SELECT =
   'ai_enabled, ai_provider, ai_model, ai_google_key, ai_openai_key, ai_anthropic_key, ai_openrouter_key, ai_opencode_key';
+
+const ORG_AI_SELECT_LEGACY =
+  'ai_enabled, ai_provider, ai_model, ai_google_key, ai_openai_key, ai_anthropic_key';
+
+function projectRefForError(): string | null {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
+  return url ? extractProjectRefFromSupabaseUrl(url) : null;
+}
+
+async function loadOrgAiSettings(organizationId: string) {
+  const admin = createStaticAdminClient();
+
+  const full = await admin
+    .from('organization_settings')
+    .select(ORG_AI_SELECT)
+    .eq('organization_id', organizationId)
+    .maybeSingle();
+
+  if (!full.error) return full;
+
+  if (isMissingOrgAiGatewayColumn(full.error)) {
+    const migrated = await ensureOrganizationSettingsAiGatewayColumns();
+    if (migrated) {
+      return admin
+        .from('organization_settings')
+        .select(ORG_AI_SELECT)
+        .eq('organization_id', organizationId)
+        .maybeSingle();
+    }
+
+    return admin
+      .from('organization_settings')
+      .select(ORG_AI_SELECT_LEGACY)
+      .eq('organization_id', organizationId)
+      .maybeSingle();
+  }
+
+  return full;
+}
 
 function buildAiSettingsResponse(
   orgSettings: {
@@ -86,13 +131,12 @@ export async function GET() {
     return json({ error: 'Profile not found' }, 404);
   }
 
-  const { data: orgSettings, error: orgError } = await createStaticAdminClient()
-    .from('organization_settings')
-    .select(ORG_AI_SELECT)
-    .eq('organization_id', profile.organization_id)
-    .maybeSingle();
+  const { data: orgSettings, error: orgError } = await loadOrgAiSettings(profile.organization_id);
 
   if (orgError) {
+    if (isMissingOrgAiGatewayColumn(orgError)) {
+      return json({ error: schemaMissingAiGatewayColumnsMessage(projectRefForError()) }, 503);
+    }
     return json({ error: orgError.message }, 500);
   }
 
@@ -172,6 +216,23 @@ export async function POST(req: Request) {
   const { error: upsertError } = await createStaticAdminClient()
     .from('organization_settings')
     .upsert(dbUpdates, { onConflict: 'organization_id' });
+
+  if (upsertError && isMissingOrgAiGatewayColumn(upsertError)) {
+    const migrated = await ensureOrganizationSettingsAiGatewayColumns();
+    if (migrated) {
+      const retry = await createStaticAdminClient()
+        .from('organization_settings')
+        .upsert(dbUpdates, { onConflict: 'organization_id' });
+      if (!retry.error) {
+        return json({ ok: true });
+      }
+      if (isMissingOrgAiGatewayColumn(retry.error)) {
+        return json({ error: schemaMissingAiGatewayColumnsMessage(projectRefForError()) }, 503);
+      }
+      return json({ error: retry.error.message }, 500);
+    }
+    return json({ error: schemaMissingAiGatewayColumnsMessage(projectRefForError()) }, 503);
+  }
 
   if (upsertError) {
     return json({ error: upsertError.message }, 500);

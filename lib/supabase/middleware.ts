@@ -94,8 +94,10 @@ export async function updateSession(request: NextRequest) {
         return NextResponse.redirect(url)
     }
 
-    // Redirect authenticated users away from login
-    if (user && isAuthRoute) {
+    // Redirect authenticated users away from login (exceto redefinição de senha)
+    const isResetPasswordRoute = pathname === '/login/reset-password'
+
+    if (user && isAuthRoute && !isResetPasswordRoute) {
         const url = request.nextUrl.clone()
         url.pathname = '/dashboard'
         return NextResponse.redirect(url)
