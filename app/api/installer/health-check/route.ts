@@ -90,7 +90,7 @@ async function checkDatabaseHealth(dbUrl: string): Promise<{
       hasOrganization = parseInt(orgResult?.rows?.[0]?.count || '0', 10) > 0;
 
       const adminResult = await client.query<{ count: string }>(
-        `SELECT COUNT(*)::text as count FROM public.user_settings WHERE role = 'admin' LIMIT 1`
+        `SELECT COUNT(*)::text as count FROM public.profiles WHERE role = 'admin' LIMIT 1`
       );
       hasAdmin = parseInt(adminResult?.rows?.[0]?.count || '0', 10) > 0;
     }

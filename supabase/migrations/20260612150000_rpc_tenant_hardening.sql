@@ -8,6 +8,9 @@ ALTER TABLE public.profiles DROP CONSTRAINT IF EXISTS profiles_role_check;
 ALTER TABLE public.profiles ADD CONSTRAINT profiles_role_check
   CHECK (role IN ('admin', 'vendedor'));
 
+-- Signup público não deve criar administradores por metadata.
+-- Admin inicial/convites administrativos continuam usando service_role e upsert explícito em profiles.
+
 -- Novos usuários entram como vendedor por padrão
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS trigger AS $$
@@ -29,10 +32,7 @@ BEGIN
         new.email,
         COALESCE(new.raw_user_meta_data->>'name', new.raw_user_meta_data->>'full_name', split_part(new.email, '@', 1)),
         new.raw_user_meta_data->>'avatar_url',
-        CASE
-            WHEN COALESCE(new.raw_user_meta_data->>'role', 'vendedor') = 'admin' THEN 'admin'
-            ELSE 'vendedor'
-        END,
+        'vendedor',
         v_org_id
     );
 
@@ -197,3 +197,17 @@ $$;
 -- cleanup_rate_limits: operação de manutenção — apenas service_role
 REVOKE EXECUTE ON FUNCTION public.cleanup_rate_limits(INTEGER) FROM authenticated;
 GRANT EXECUTE ON FUNCTION public.cleanup_rate_limits(INTEGER) TO service_role;
+
+REVOKE ALL ON FUNCTION public.get_dashboard_stats() FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.mark_deal_won(UUID) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.mark_deal_lost(UUID, TEXT) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.reopen_deal(UUID) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.get_contact_stage_counts() FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.log_audit_event(TEXT, TEXT, UUID, JSONB, TEXT) FROM PUBLIC;
+
+GRANT EXECUTE ON FUNCTION public.get_dashboard_stats() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.mark_deal_won(UUID) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.mark_deal_lost(UUID, TEXT) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.reopen_deal(UUID) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.get_contact_stage_counts() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.log_audit_event(TEXT, TEXT, UUID, JSONB, TEXT) TO authenticated;

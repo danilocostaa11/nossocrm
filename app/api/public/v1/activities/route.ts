@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { authPublicApi } from '@/lib/public-api/auth';
 import { createStaticAdminClient } from '@/lib/supabase/server';
 import { decodeOffsetCursor, encodeOffsetCursor, parseLimit } from '@/lib/public-api/cursor';
+import { validateOrganizationRefs } from '@/lib/public-api/ownership';
 import { sanitizeUUID } from '@/lib/supabase/utils';
 import { normalizeText } from '@/lib/public-api/sanitize';
 
@@ -87,6 +88,36 @@ export async function POST(request: Request) {
   }
 
   const sb = createStaticAdminClient();
+  const dealId = sanitizeUUID(parsed.data.deal_id) || null;
+  const contactId = sanitizeUUID(parsed.data.contact_id) || null;
+  const clientCompanyId = sanitizeUUID(parsed.data.client_company_id) || null;
+  const refs = await validateOrganizationRefs([
+    {
+      label: 'deal_id',
+      table: 'deals',
+      id: dealId,
+      organizationId: auth.organizationId,
+    },
+    {
+      label: 'contact_id',
+      table: 'contacts',
+      id: contactId,
+      organizationId: auth.organizationId,
+    },
+    {
+      label: 'client_company_id',
+      table: 'crm_companies',
+      id: clientCompanyId,
+      organizationId: auth.organizationId,
+    },
+  ]);
+  if (!refs.ok) {
+    return NextResponse.json(
+      { error: `Invalid ${refs.label}`, code: 'VALIDATION_ERROR' },
+      { status: 422 }
+    );
+  }
+
   const insertPayload: any = {
     organization_id: auth.organizationId,
     title: normalizeText(parsed.data.title) || parsed.data.title,
@@ -94,9 +125,9 @@ export async function POST(request: Request) {
     type: normalizeText(parsed.data.type) || parsed.data.type,
     date: date.toISOString(),
     completed: false,
-    deal_id: sanitizeUUID(parsed.data.deal_id) || null,
-    contact_id: sanitizeUUID(parsed.data.contact_id) || null,
-    client_company_id: sanitizeUUID(parsed.data.client_company_id) || null,
+    deal_id: dealId,
+    contact_id: contactId,
+    client_company_id: clientCompanyId,
     created_at: now.toISOString(),
   };
 
@@ -108,4 +139,3 @@ export async function POST(request: Request) {
   if (error) return NextResponse.json({ error: error.message, code: 'DB_ERROR' }, { status: 500 });
   return NextResponse.json({ data, action: 'created' }, { status: 201 });
 }
-

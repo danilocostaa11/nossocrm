@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { authPublicApi } from '@/lib/public-api/auth';
 import { createStaticAdminClient } from '@/lib/supabase/server';
+import { validateOrganizationRefs } from '@/lib/public-api/ownership';
 import { isValidUUID } from '@/lib/supabase/utils';
 import { normalizeEmail, normalizePhone, normalizeText } from '@/lib/public-api/sanitize';
 import { sanitizeUUID } from '@/lib/supabase/utils';
@@ -96,6 +97,19 @@ export async function PATCH(request: Request, ctx: { params: Promise<{ contactId
   if (parsed.data.client_company_id !== undefined) {
     updates.client_company_id = parsed.data.client_company_id === null ? null : (sanitizeUUID(parsed.data.client_company_id) || null);
   }
+  if (updates.client_company_id) {
+    const refs = await validateOrganizationRefs([
+      {
+        label: 'client_company_id',
+        table: 'crm_companies',
+        id: updates.client_company_id,
+        organizationId: auth.organizationId,
+      },
+    ]);
+    if (!refs.ok) {
+      return NextResponse.json({ error: 'Invalid client_company_id', code: 'VALIDATION_ERROR' }, { status: 422 });
+    }
+  }
   if (parsed.data.birth_date !== undefined) {
     updates.birth_date = parsed.data.birth_date === null ? null : toIsoDateString(parsed.data.birth_date);
     if (updates.birth_date === '__INVALID__') {
@@ -133,4 +147,3 @@ export async function PATCH(request: Request, ctx: { params: Promise<{ contactId
 
   return NextResponse.json({ data });
 }
-

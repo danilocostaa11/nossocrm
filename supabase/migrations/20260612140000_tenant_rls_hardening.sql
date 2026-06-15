@@ -85,7 +85,8 @@ DECLARE
 BEGIN
   FOREACH tbl IN ARRAY ARRAY[
     'crm_companies', 'contacts', 'boards', 'board_stages', 'deals', 'deal_items',
-    'activities', 'products', 'leads', 'tags', 'custom_field_definitions', 'quick_scripts'
+    'activities', 'products', 'leads', 'tags', 'custom_field_definitions', 'quick_scripts',
+    'system_notifications', 'audit_logs', 'security_alerts'
   ]
   LOOP
     FOR pol IN
@@ -108,6 +109,53 @@ BEGIN
     );
     EXECUTE format(
       'CREATE POLICY "tenant_isolation_delete" ON public.%I FOR DELETE TO authenticated USING (organization_id = public.current_user_organization_id())',
+      tbl
+    );
+  END LOOP;
+END $$;
+
+-- Rate limits são internos do backend/Edge Functions. Usuários autenticados não precisam ler/escrever.
+DO $$
+DECLARE
+  pol RECORD;
+BEGIN
+  FOR pol IN
+    SELECT policyname FROM pg_policies WHERE schemaname = 'public' AND tablename = 'rate_limits'
+  LOOP
+    EXECUTE format('DROP POLICY IF EXISTS %I ON public.rate_limits', pol.policyname);
+  END LOOP;
+END $$;
+
+-- Tabelas por usuário: cada usuário vê apenas os próprios registros.
+DO $$
+DECLARE
+  tbl TEXT;
+  pol RECORD;
+BEGIN
+  FOREACH tbl IN ARRAY ARRAY[
+    'user_consents', 'ai_conversations', 'ai_decisions', 'ai_audio_notes', 'ai_suggestion_interactions'
+  ]
+  LOOP
+    FOR pol IN
+      SELECT policyname FROM pg_policies WHERE schemaname = 'public' AND tablename = tbl
+    LOOP
+      EXECUTE format('DROP POLICY IF EXISTS %I ON public.%I', pol.policyname, tbl);
+    END LOOP;
+
+    EXECUTE format(
+      'CREATE POLICY "own_rows_select" ON public.%I FOR SELECT TO authenticated USING (user_id = auth.uid())',
+      tbl
+    );
+    EXECUTE format(
+      'CREATE POLICY "own_rows_insert" ON public.%I FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid())',
+      tbl
+    );
+    EXECUTE format(
+      'CREATE POLICY "own_rows_update" ON public.%I FOR UPDATE TO authenticated USING (user_id = auth.uid()) WITH CHECK (user_id = auth.uid())',
+      tbl
+    );
+    EXECUTE format(
+      'CREATE POLICY "own_rows_delete" ON public.%I FOR DELETE TO authenticated USING (user_id = auth.uid())',
       tbl
     );
   END LOOP;

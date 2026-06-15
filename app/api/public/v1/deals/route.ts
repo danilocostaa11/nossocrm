@@ -5,6 +5,7 @@ import { createStaticAdminClient } from '@/lib/supabase/server';
 import { decodeOffsetCursor, encodeOffsetCursor, parseLimit } from '@/lib/public-api/cursor';
 import { resolveBoardIdFromKey, resolveFirstStageId } from '@/lib/public-api/resolve';
 import { normalizeEmail, normalizePhone, normalizeText } from '@/lib/public-api/sanitize';
+import { validateOrganizationRefs } from '@/lib/public-api/ownership';
 import { isValidUUID, sanitizeUUID } from '@/lib/supabase/utils';
 
 export const runtime = 'nodejs';
@@ -132,6 +133,18 @@ async function upsertContactForDeal(opts: {
     updated_at: now,
   };
 
+  if (base.client_company_id) {
+    const refs = await validateOrganizationRefs([
+      {
+        label: 'client_company_id',
+        table: 'crm_companies',
+        id: base.client_company_id,
+        organizationId: opts.organizationId,
+      },
+    ]);
+    if (!refs.ok) throw new Error('Invalid client_company_id');
+  }
+
   if (existing.data?.id) {
     if (name) base.name = name;
     const { data, error } = await sb.from('contacts').update(base).eq('id', existing.data.id).select('id').single();
@@ -192,6 +205,41 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Provide contact_id or contact', code: 'VALIDATION_ERROR' }, { status: 422 });
   }
 
+  const clientCompanyId = sanitizeUUID(parsed.data.client_company_id) || null;
+  const refs = await validateOrganizationRefs([
+    {
+      label: 'board_id',
+      table: 'boards',
+      id: boardId,
+      organizationId: auth.organizationId,
+    },
+    {
+      label: 'stage_id',
+      table: 'board_stages',
+      id: stageId,
+      organizationId: auth.organizationId,
+      deletedColumn: '',
+    },
+    {
+      label: 'contact_id',
+      table: 'contacts',
+      id: contactId,
+      organizationId: auth.organizationId,
+    },
+    {
+      label: 'client_company_id',
+      table: 'crm_companies',
+      id: clientCompanyId,
+      organizationId: auth.organizationId,
+    },
+  ]);
+  if (!refs.ok) {
+    return NextResponse.json(
+      { error: `Invalid ${refs.label}`, code: 'VALIDATION_ERROR' },
+      { status: 422 }
+    );
+  }
+
   const now = new Date().toISOString();
   const value = Number(parsed.data.value ?? 0);
   const insertPayload: any = {
@@ -201,7 +249,7 @@ export async function POST(request: Request) {
     board_id: boardId,
     stage_id: stageId,
     contact_id: contactId,
-    client_company_id: sanitizeUUID(parsed.data.client_company_id) || null,
+    client_company_id: clientCompanyId,
     is_won: false,
     is_lost: false,
     created_at: now,
@@ -217,4 +265,3 @@ export async function POST(request: Request) {
 
   return NextResponse.json({ data, action: 'created' }, { status: 201 });
 }
-

@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { authPublicApi } from '@/lib/public-api/auth';
 import { createStaticAdminClient } from '@/lib/supabase/server';
 import { decodeOffsetCursor, encodeOffsetCursor, parseLimit } from '@/lib/public-api/cursor';
+import { validateOrganizationRefs } from '@/lib/public-api/ownership';
 import { normalizeEmail, normalizePhone, normalizeText } from '@/lib/public-api/sanitize';
 import { sanitizeUUID } from '@/lib/supabase/utils';
 
@@ -166,6 +167,19 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: e?.message || 'Invalid company', code: 'VALIDATION_ERROR' }, { status: 422 });
     }
   }
+  if (clientCompanyId) {
+    const refs = await validateOrganizationRefs([
+      {
+        label: 'client_company_id',
+        table: 'crm_companies',
+        id: clientCompanyId,
+        organizationId: auth.organizationId,
+      },
+    ]);
+    if (!refs.ok) {
+      return NextResponse.json({ error: 'Invalid client_company_id', code: 'VALIDATION_ERROR' }, { status: 422 });
+    }
+  }
 
   let lookup = sb
     .from('contacts')
@@ -232,4 +246,3 @@ export async function POST(request: Request) {
   if (error) return NextResponse.json({ error: error.message, code: 'DB_ERROR' }, { status: 500 });
   return NextResponse.json({ data, action: 'created' }, { status: 201 });
 }
-

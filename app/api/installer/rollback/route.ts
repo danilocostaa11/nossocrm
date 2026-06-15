@@ -6,6 +6,7 @@ export const maxDuration = 60;
 export const runtime = 'nodejs';
 
 const RollbackSchema = z.object({
+  installerToken: z.string().optional(),
   supabase: z.object({
     url: z.string().url(),
     serviceRoleKey: z.string().min(1),
@@ -27,12 +28,21 @@ export async function POST(req: Request) {
     return Response.json({ error: 'Forbidden' }, { status: 403 });
   }
 
+  if (process.env.INSTALLER_ENABLED === 'false') {
+    return Response.json({ error: 'Installer disabled' }, { status: 403 });
+  }
+
   const raw = await req.json().catch(() => null);
   const parsed = RollbackSchema.safeParse(raw);
   
   if (!parsed.success) {
     log('ERROR: Invalid payload');
     return Response.json({ error: 'Invalid payload', details: parsed.error.flatten() }, { status: 400 });
+  }
+
+  const expectedToken = process.env.INSTALLER_TOKEN;
+  if (expectedToken && parsed.data.installerToken !== expectedToken) {
+    return Response.json({ error: 'Invalid installer token' }, { status: 403 });
   }
 
   const { supabase: supabaseConfig, actions } = parsed.data;
@@ -51,19 +61,16 @@ export async function POST(req: Request) {
         case 'delete_admin': {
           // Delete admin users from auth
           const { data: admins } = await supabase
-            .from('user_settings')
-            .select('user_id')
+            .from('profiles')
+            .select('id')
             .eq('role', 'admin');
           
           if (admins && admins.length > 0) {
             for (const admin of admins) {
-              await supabase.auth.admin.deleteUser(admin.user_id);
-              log(`Deleted admin user: ${admin.user_id}`);
+              await supabase.auth.admin.deleteUser(admin.id);
+              log(`Deleted admin user: ${admin.id}`);
             }
           }
-          
-          // Delete from user_settings
-          await supabase.from('user_settings').delete().eq('role', 'admin');
           
           results.push({ action, success: true });
           break;
@@ -84,7 +91,7 @@ export async function POST(req: Request) {
             'activities',
             'deals', 
             'contacts',
-            'companies',
+            'crm_companies',
             'boards',
             'user_settings',
             'organizations',

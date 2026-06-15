@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { authPublicApi } from '@/lib/public-api/auth';
 import { createStaticAdminClient } from '@/lib/supabase/server';
+import { validateOrganizationRefs } from '@/lib/public-api/ownership';
 import { isValidUUID, sanitizeUUID } from '@/lib/supabase/utils';
 import { normalizeText } from '@/lib/public-api/sanitize';
 
@@ -62,6 +63,27 @@ export async function PATCH(request: Request, ctx: { params: Promise<{ dealId: s
   if (parsed.data.loss_reason !== undefined) updates.loss_reason = parsed.data.loss_reason === null ? null : normalizeText(parsed.data.loss_reason);
   updates.updated_at = new Date().toISOString();
 
+  const refs = await validateOrganizationRefs([
+    {
+      label: 'contact_id',
+      table: 'contacts',
+      id: updates.contact_id,
+      organizationId: auth.organizationId,
+    },
+    {
+      label: 'client_company_id',
+      table: 'crm_companies',
+      id: updates.client_company_id,
+      organizationId: auth.organizationId,
+    },
+  ]);
+  if (!refs.ok) {
+    return NextResponse.json(
+      { error: `Invalid ${refs.label}`, code: 'VALIDATION_ERROR' },
+      { status: 422 }
+    );
+  }
+
   const sb = createStaticAdminClient();
   const { data, error } = await sb
     .from('deals')
@@ -76,4 +98,3 @@ export async function PATCH(request: Request, ctx: { params: Promise<{ dealId: s
 
   return NextResponse.json({ data });
 }
-

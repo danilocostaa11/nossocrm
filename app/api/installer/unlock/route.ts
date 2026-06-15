@@ -42,6 +42,11 @@ export async function POST(req: Request) {
   const parsed = Schema.safeParse(raw);
   if (!parsed.success) return json({ error: 'Invalid payload', details: parsed.error.flatten() }, 400);
 
+  const expectedToken = process.env.INSTALLER_TOKEN;
+  if (expectedToken && parsed.data.installerToken !== expectedToken) {
+    return json({ error: 'Invalid installer token' }, 403);
+  }
+
   const { token, projectId, teamId } = parsed.data.vercel;
 
   try {
