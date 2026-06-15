@@ -98,6 +98,34 @@ export async function validateProviderApiKey(
       return { valid: false, error: message || 'Erro ao validar chave Anthropic' };
     }
 
+    if (provider === 'openrouter') {
+      const response = await fetch('https://openrouter.ai/api/v1/models', {
+        headers: { Authorization: `Bearer ${trimmedKey}` },
+      });
+
+      if (response.ok || response.status === 429) {
+        return { valid: true };
+      }
+      if (response.status === 401) {
+        return { valid: false, error: 'Chave de API inválida' };
+      }
+      return { valid: false, error: 'Erro ao validar chave OpenRouter' };
+    }
+
+    if (provider === 'opencode') {
+      const response = await fetch('https://opencode.ai/zen/v1/models', {
+        headers: { Authorization: `Bearer ${trimmedKey}` },
+      });
+
+      if (response.ok || response.status === 429) {
+        return { valid: true };
+      }
+      if (response.status === 401) {
+        return { valid: false, error: 'Chave de API inválida' };
+      }
+      return { valid: false, error: 'Erro ao validar chave OpenCode Zen' };
+    }
+
     return { valid: false, error: 'Provedor não suportado' };
   } catch (error) {
     console.error('API Key validation error:', error);

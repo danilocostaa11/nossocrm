@@ -7,10 +7,15 @@ import { createClient, createStaticAdminClient } from '@/lib/supabase/server';
 import type { CRMCallOptions } from '@/types/ai';
 import { isAllowedOrigin } from '@/lib/security/sameOrigin';
 import { isAIFeatureEnabled } from '@/lib/ai/features/server';
+import {
+  getProviderLabel,
+  normalizeOrgAiProvider,
+  ORG_AI_SETTINGS_COLUMNS,
+  resolveOrgAiApiKey,
+  resolveOrgAiModelId,
+} from '@/lib/ai/orgAiCredentials';
 
 export const maxDuration = 60;
-
-type AIProvider = 'google' | 'openai' | 'anthropic';
 
 function asOptionalString(v: unknown): string | undefined {
     return typeof v === 'string' ? v : undefined;
@@ -133,7 +138,7 @@ export async function POST(req: Request) {
     // Segurança: chaves lidas via service-role (colunas revogadas para `authenticated`).
     const { data: orgSettings } = await createStaticAdminClient()
         .from('organization_settings')
-        .select('ai_enabled, ai_provider, ai_model, ai_google_key, ai_openai_key, ai_anthropic_key')
+        .select(ORG_AI_SETTINGS_COLUMNS)
         .eq('organization_id', organizationId)
         .maybeSingle();
 
@@ -153,26 +158,17 @@ export async function POST(req: Request) {
         );
     }
 
-    const provider = (orgSettings?.ai_provider ?? 'google') as AIProvider;
-    const modelId: string | null = orgSettings?.ai_model ?? null;
-
-    const apiKey: string | null =
-        provider === 'google'
-            ? (orgSettings?.ai_google_key ?? null)
-            : provider === 'openai'
-                ? (orgSettings?.ai_openai_key ?? null)
-                : (orgSettings?.ai_anthropic_key ?? null);
+    const provider = normalizeOrgAiProvider(orgSettings?.ai_provider);
+    const apiKey = resolveOrgAiApiKey(provider, orgSettings ?? {});
 
     if (!apiKey) {
-        const providerLabel = provider === 'google' ? 'Google Gemini' : provider === 'openai' ? 'OpenAI' : 'Anthropic';
         return new Response(
-            `API key não configurada para ${providerLabel}. Configure em Configurações → Inteligência Artificial.`,
+            `API key não configurada para ${getProviderLabel(provider)}. Configure em Configurações → Inteligência Artificial.`,
             { status: 400 }
         );
     }
 
-    const resolvedModelId =
-        modelId || (provider === 'google' ? 'gemini-2.5-flash' : provider === 'openai' ? 'gpt-4o' : 'claude-sonnet-4-5');
+    const resolvedModelId = resolveOrgAiModelId(provider, orgSettings?.ai_model);
 
     // 5. Build type-safe context for agent
     const context: CRMCallOptions = {

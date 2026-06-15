@@ -1,6 +1,7 @@
 'use client';
 
 import { callAIProxy, isConsentError, isRateLimitError } from '@/lib/supabase/ai-proxy';
+import type { AIProvider } from '@/lib/ai/providersCatalog';
 import type { Deal, DealView, LifecycleStage } from '@/types';
 import type { ParsedAction } from '@/types/aiActions';
 
@@ -11,7 +12,7 @@ import type { ParsedAction } from '@/types/aiActions';
  * O parâmetro `config` (legado) é aceito apenas para compatibilidade de assinatura.
  */
 export interface AIConfigLegacy {
-  provider: 'google' | 'openai' | 'anthropic';
+  provider: AIProvider;
   apiKey: string;
   model: string;
   thinking: boolean;

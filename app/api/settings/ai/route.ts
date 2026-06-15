@@ -1,6 +1,8 @@
 import { z } from 'zod';
 import { createClient, createStaticAdminClient } from '@/lib/supabase/server';
 import { isAllowedOrigin } from '@/lib/security/sameOrigin';
+import { AI_PROVIDER_ENUM } from '@/lib/ai/providersCatalog';
+import type { AIProvider } from '@/lib/ai/providersCatalog';
 
 function json<T>(body: T, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -11,22 +13,57 @@ function json<T>(body: T, status = 200): Response {
   });
 }
 
-type Provider = 'google' | 'openai' | 'anthropic';
-
 const UpdateOrgAISettingsSchema = z
   .object({
     aiEnabled: z.boolean().optional(),
-    aiProvider: z.enum(['google', 'openai', 'anthropic']).optional(),
+    aiProvider: z.enum(AI_PROVIDER_ENUM).optional(),
     aiModel: z.string().min(1).max(200).optional(),
     aiGoogleKey: z.string().optional(),
     aiOpenaiKey: z.string().optional(),
     aiAnthropicKey: z.string().optional(),
+    aiOpenrouterKey: z.string().optional(),
+    aiOpencodeKey: z.string().optional(),
   })
   .strict();
 
+const ORG_AI_SELECT =
+  'ai_enabled, ai_provider, ai_model, ai_google_key, ai_openai_key, ai_anthropic_key, ai_openrouter_key, ai_opencode_key';
+
+function buildAiSettingsResponse(
+  orgSettings: {
+    ai_enabled?: boolean | null;
+    ai_provider?: string | null;
+    ai_model?: string | null;
+    ai_google_key?: string | null;
+    ai_openai_key?: string | null;
+    ai_anthropic_key?: string | null;
+    ai_openrouter_key?: string | null;
+    ai_opencode_key?: string | null;
+  } | null,
+  includeKeys: boolean
+) {
+  const aiEnabled = typeof orgSettings?.ai_enabled === 'boolean' ? orgSettings.ai_enabled : true;
+  const aiProvider = (orgSettings?.ai_provider || 'google') as AIProvider;
+
+  return {
+    aiEnabled,
+    aiProvider,
+    aiModel: orgSettings?.ai_model || 'gemini-2.5-flash',
+    aiGoogleKey: includeKeys ? orgSettings?.ai_google_key || '' : '',
+    aiOpenaiKey: includeKeys ? orgSettings?.ai_openai_key || '' : '',
+    aiAnthropicKey: includeKeys ? orgSettings?.ai_anthropic_key || '' : '',
+    aiOpenrouterKey: includeKeys ? orgSettings?.ai_openrouter_key || '' : '',
+    aiOpencodeKey: includeKeys ? orgSettings?.ai_opencode_key || '' : '',
+    aiHasGoogleKey: Boolean(orgSettings?.ai_google_key),
+    aiHasOpenaiKey: Boolean(orgSettings?.ai_openai_key),
+    aiHasAnthropicKey: Boolean(orgSettings?.ai_anthropic_key),
+    aiHasOpenrouterKey: Boolean(orgSettings?.ai_openrouter_key),
+    aiHasOpencodeKey: Boolean(orgSettings?.ai_opencode_key),
+  };
+}
+
 /**
  * Handler HTTP `GET` deste endpoint (Next.js Route Handler).
- * @returns {Promise<Response>} Retorna um valor do tipo `Promise<Response>`.
  */
 export async function GET() {
   const supabase = await createClient();
@@ -49,11 +86,9 @@ export async function GET() {
     return json({ error: 'Profile not found' }, 404);
   }
 
-  // Segurança: chaves lidas via service-role após autenticação. As colunas de chave
-  // têm acesso revogado para o role `authenticated` no banco (defense-in-depth).
   const { data: orgSettings, error: orgError } = await createStaticAdminClient()
     .from('organization_settings')
-    .select('ai_enabled, ai_provider, ai_model, ai_google_key, ai_openai_key, ai_anthropic_key')
+    .select(ORG_AI_SELECT)
     .eq('organization_id', profile.organization_id)
     .maybeSingle();
 
@@ -61,44 +96,13 @@ export async function GET() {
     return json({ error: orgError.message }, 500);
   }
 
-  const aiEnabled = typeof orgSettings?.ai_enabled === 'boolean' ? orgSettings.ai_enabled : true;
-
-  // Security: members should NOT receive raw API keys.
-  if (profile.role !== 'admin') {
-    return json({
-      aiEnabled,
-      aiProvider: (orgSettings?.ai_provider || 'google') as Provider,
-      aiModel: orgSettings?.ai_model || 'gemini-2.5-flash',
-      aiGoogleKey: '',
-      aiOpenaiKey: '',
-      aiAnthropicKey: '',
-      aiHasGoogleKey: Boolean(orgSettings?.ai_google_key),
-      aiHasOpenaiKey: Boolean(orgSettings?.ai_openai_key),
-      aiHasAnthropicKey: Boolean(orgSettings?.ai_anthropic_key),
-    });
-  }
-
-  return json({
-    aiEnabled,
-    aiProvider: (orgSettings?.ai_provider || 'google') as Provider,
-    aiModel: orgSettings?.ai_model || 'gemini-2.5-flash',
-    aiGoogleKey: orgSettings?.ai_google_key || '',
-    aiOpenaiKey: orgSettings?.ai_openai_key || '',
-    aiAnthropicKey: orgSettings?.ai_anthropic_key || '',
-    aiHasGoogleKey: Boolean(orgSettings?.ai_google_key),
-    aiHasOpenaiKey: Boolean(orgSettings?.ai_openai_key),
-    aiHasAnthropicKey: Boolean(orgSettings?.ai_anthropic_key),
-  });
+  return json(buildAiSettingsResponse(orgSettings, profile.role === 'admin'));
 }
 
 /**
  * Handler HTTP `POST` deste endpoint (Next.js Route Handler).
- *
- * @param {Request} req - Objeto da requisição.
- * @returns {Promise<Response>} Retorna um valor do tipo `Promise<Response>`.
  */
 export async function POST(req: Request) {
-  // Mitigação CSRF: endpoint autenticado por cookies.
   if (!isAllowedOrigin(req)) {
     return json({ error: 'Forbidden' }, 403);
   }
@@ -135,7 +139,6 @@ export async function POST(req: Request) {
 
   const updates = parsed.data;
 
-  // Normalize empty-string keys to null
   const normalizeKey = (value: string | undefined) => {
     if (value === undefined) return undefined;
     const trimmed = value.trim();
@@ -160,8 +163,12 @@ export async function POST(req: Request) {
   const anthropicKey = normalizeKey(updates.aiAnthropicKey);
   if (anthropicKey !== undefined) dbUpdates.ai_anthropic_key = anthropicKey;
 
-  // Upsert via service-role: o papel de admin já foi verificado acima e as colunas
-  // de chave têm escrita revogada para o role `authenticated` no banco.
+  const openrouterKey = normalizeKey(updates.aiOpenrouterKey);
+  if (openrouterKey !== undefined) dbUpdates.ai_openrouter_key = openrouterKey;
+
+  const opencodeKey = normalizeKey(updates.aiOpencodeKey);
+  if (opencodeKey !== undefined) dbUpdates.ai_opencode_key = opencodeKey;
+
   const { error: upsertError } = await createStaticAdminClient()
     .from('organization_settings')
     .upsert(dbUpdates, { onConflict: 'organization_id' });

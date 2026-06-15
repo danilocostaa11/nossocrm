@@ -29,6 +29,7 @@
 - Naming: camelCase for variables/functions, PascalCase for components/types
 - Tests: Vitest + happy-dom + React Testing Library; place `.test.ts(x)` files alongside source
 ## AI Context References
+- **Session handoff (ler primeiro em chat novo):** `.context/docs/session-handoff.md`
 - Documentation index: `.context/docs/README.md`
 - Agent playbooks: `.context/agents/README.md`
 

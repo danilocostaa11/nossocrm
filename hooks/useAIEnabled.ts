@@ -15,14 +15,15 @@
 import { useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useCRM } from '@/context/CRMContext';
+import type { AIProvider } from '@/lib/ai/providersCatalog';
 
 export interface UseAIEnabledResult {
   /** Se a IA está habilitada (tem API Key configurada) */
   isAIEnabled: boolean;
   /** A API Key configurada */
   apiKey: string | null;
-  /** Provider configurado (google, openai, anthropic) */
-  provider: 'google' | 'openai' | 'anthropic';
+  /** Provider configurado */
+  provider: AIProvider;
   /** Navega para as configurações de IA */
   goToSettings: () => void;
 }

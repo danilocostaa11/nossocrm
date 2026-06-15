@@ -36,8 +36,10 @@ export interface DbLifecycleStage {
   created_at: string;
 }
 
+import type { AIProvider } from '@/lib/ai/providersCatalog';
+
 export interface UserSettings {
-  aiProvider: 'google' | 'openai' | 'anthropic';
+  aiProvider: AIProvider;
   aiApiKey: string; // Current active key (based on provider)
   aiGoogleKey: string;
   aiOpenaiKey: string;
@@ -61,6 +63,8 @@ const transformSettings = (db: DbUserSettings): UserSettings => {
       case 'google': return db.ai_google_key || db.ai_api_key || '';
       case 'openai': return db.ai_openai_key || '';
       case 'anthropic': return db.ai_anthropic_key || '';
+      case 'openrouter': return (db as { ai_openrouter_key?: string | null }).ai_openrouter_key || '';
+      case 'opencode': return (db as { ai_opencode_key?: string | null }).ai_opencode_key || '';
       default: return db.ai_api_key || '';
     }
   };

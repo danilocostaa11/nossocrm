@@ -29,7 +29,7 @@ export function NavigationRail({ onOpenMore }: NavigationRailProps) {
       )}
     >
       <div className="flex flex-col items-center gap-2 py-4">
-        <BrandMark showLabel={false} size="sm" />
+        <BrandMark variant="icon" size="sm" />
       </div>
 
       <div className="flex-1 px-3 py-2 overflow-y-auto scrollbar-custom">

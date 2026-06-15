@@ -51,6 +51,7 @@ import { ContactsProvider, useContacts } from './contacts/ContactsContext';
 import { ActivitiesProvider, useActivities } from './activities/ActivitiesContext';
 import { BoardsProvider, useBoards } from './boards/BoardsContext';
 import { SettingsProvider, useSettings } from './settings/SettingsContext';
+import type { AIProvider } from '@/lib/ai/providersCatalog';
 
 // ============================================
 // CRM CONTEXT TYPE (Legacy API - Backward Compatible)
@@ -163,8 +164,8 @@ interface CRMContextType {
   setIsGlobalAIOpen: (isOpen: boolean) => void;
 
   // AI Configuration
-  aiProvider: 'google' | 'openai' | 'anthropic';
-  setAiProvider: (provider: 'google' | 'openai' | 'anthropic') => Promise<void>;
+  aiProvider: AIProvider;
+  setAiProvider: (provider: AIProvider) => Promise<void>;
   aiApiKey: string;
   setAiApiKey: (key: string) => Promise<void>;
   aiModel: string;

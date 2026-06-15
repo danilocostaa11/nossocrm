@@ -12,6 +12,7 @@ import { usePathname } from 'next/navigation';
 import { LifecycleStage, Product, CustomFieldDefinition, Lead } from '@/types';
 import { settingsService, lifecycleStagesService, productsService } from '@/lib/supabase';
 import { useAuth } from '../AuthContext';
+import type { AIProvider } from '@/lib/ai/providersCatalog';
 
 const DEFAULT_LIFECYCLE_STAGES: LifecycleStage[] = [
   { id: 'LEAD', name: 'Lead', color: 'bg-blue-500', order: 0, isDefault: true },
@@ -22,7 +23,7 @@ const DEFAULT_LIFECYCLE_STAGES: LifecycleStage[] = [
 ];
 
 interface AIConfig {
-  provider: 'google' | 'openai' | 'anthropic';
+  provider: AIProvider;
   apiKey: string;
   model: string;
   thinking: boolean;
@@ -66,6 +67,8 @@ interface SettingsContextType {
   aiGoogleKey: string;
   aiOpenaiKey: string;
   aiAnthropicKey: string;
+  aiOpenrouterKey: string;
+  aiOpencodeKey: string;
   aiModel: string;
   setAiModel: (model: string) => Promise<void>;
   /** Toggle org-wide: admin controla se IA está ativa para a organização */
@@ -137,11 +140,15 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
   const [aiGoogleKey, setAiGoogleKeyState] = useState<string>('');
   const [aiOpenaiKey, setAiOpenaiKeyState] = useState<string>('');
   const [aiAnthropicKey, setAiAnthropicKeyState] = useState<string>('');
+  const [aiOpenrouterKey, setAiOpenrouterKeyState] = useState<string>('');
+  const [aiOpencodeKey, setAiOpencodeKeyState] = useState<string>('');
   const [aiModel, setAiModelState] = useState<string>('gemini-2.5-flash');
   const [aiOrgEnabled, setAiOrgEnabledState] = useState<boolean>(true);
   const [aiHasGoogleKey, setAiHasGoogleKey] = useState<boolean>(false);
   const [aiHasOpenaiKey, setAiHasOpenaiKey] = useState<boolean>(false);
   const [aiHasAnthropicKey, setAiHasAnthropicKey] = useState<boolean>(false);
+  const [aiHasOpenrouterKey, setAiHasOpenrouterKey] = useState<boolean>(false);
+  const [aiHasOpencodeKey, setAiHasOpencodeKey] = useState<boolean>(false);
   const [aiFeatureFlags, setAiFeatureFlags] = useState<Record<string, boolean>>({});
   const [aiThinking, setAiThinkingState] = useState<boolean>(true);
   const [aiSearch, setAiSearchState] = useState<boolean>(true);
@@ -153,18 +160,34 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
       case 'google': return aiGoogleKey;
       case 'openai': return aiOpenaiKey;
       case 'anthropic': return aiAnthropicKey;
+      case 'openrouter': return aiOpenrouterKey;
+      case 'opencode': return aiOpencodeKey;
       default: return '';
     }
-  }, [aiProvider, aiGoogleKey, aiOpenaiKey, aiAnthropicKey]);
+  }, [aiProvider, aiGoogleKey, aiOpenaiKey, aiAnthropicKey, aiOpenrouterKey, aiOpencodeKey]);
 
   const aiKeyConfigured = useMemo(() => {
     switch (aiProvider) {
       case 'google': return aiHasGoogleKey || Boolean(aiGoogleKey && aiGoogleKey.trim());
       case 'openai': return aiHasOpenaiKey || Boolean(aiOpenaiKey && aiOpenaiKey.trim());
       case 'anthropic': return aiHasAnthropicKey || Boolean(aiAnthropicKey && aiAnthropicKey.trim());
+      case 'openrouter': return aiHasOpenrouterKey || Boolean(aiOpenrouterKey && aiOpenrouterKey.trim());
+      case 'opencode': return aiHasOpencodeKey || Boolean(aiOpencodeKey && aiOpencodeKey.trim());
       default: return false;
     }
-  }, [aiProvider, aiHasGoogleKey, aiHasOpenaiKey, aiHasAnthropicKey, aiGoogleKey, aiOpenaiKey, aiAnthropicKey]);
+  }, [
+    aiProvider,
+    aiHasGoogleKey,
+    aiHasOpenaiKey,
+    aiHasAnthropicKey,
+    aiHasOpenrouterKey,
+    aiHasOpencodeKey,
+    aiGoogleKey,
+    aiOpenaiKey,
+    aiAnthropicKey,
+    aiOpenrouterKey,
+    aiOpencodeKey,
+  ]);
 
   // UI State
   const [isGlobalAIOpen, setIsGlobalAIOpen] = useState(false);
@@ -219,9 +242,13 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
               aiGoogleKey: string;
               aiOpenaiKey: string;
               aiAnthropicKey: string;
+              aiOpenrouterKey: string;
+              aiOpencodeKey: string;
               aiHasGoogleKey?: boolean;
               aiHasOpenaiKey?: boolean;
               aiHasAnthropicKey?: boolean;
+              aiHasOpenrouterKey?: boolean;
+              aiHasOpencodeKey?: boolean;
             };
 
             setAiOrgEnabledState(typeof aiData.aiEnabled === 'boolean' ? aiData.aiEnabled : true);
@@ -230,9 +257,13 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
             setAiGoogleKeyState(aiData.aiGoogleKey);
             setAiOpenaiKeyState(aiData.aiOpenaiKey);
             setAiAnthropicKeyState(aiData.aiAnthropicKey);
+            setAiOpenrouterKeyState(aiData.aiOpenrouterKey);
+            setAiOpencodeKeyState(aiData.aiOpencodeKey);
             setAiHasGoogleKey(Boolean(aiData.aiHasGoogleKey));
             setAiHasOpenaiKey(Boolean(aiData.aiHasOpenaiKey));
             setAiHasAnthropicKey(Boolean(aiData.aiHasAnthropicKey));
+            setAiHasOpenrouterKey(Boolean(aiData.aiHasOpenrouterKey));
+            setAiHasOpencodeKey(Boolean(aiData.aiHasOpencodeKey));
           } else {
             const body = await aiRes.json().catch(() => null);
             const message = body?.error || `Falha ao carregar config de IA (HTTP ${aiRes.status})`;
@@ -429,6 +460,14 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
           await updateOrgAISettings({ aiAnthropicKey: key });
           setAiAnthropicKeyState(key);
           break;
+        case 'openrouter':
+          await updateOrgAISettings({ aiOpenrouterKey: key });
+          setAiOpenrouterKeyState(key);
+          break;
+        case 'opencode':
+          await updateOrgAISettings({ aiOpencodeKey: key });
+          setAiOpencodeKeyState(key);
+          break;
       }
     },
     [updateOrgAISettings, aiProvider]
@@ -558,6 +597,8 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
       aiGoogleKey,
       aiOpenaiKey,
       aiAnthropicKey,
+      aiOpenrouterKey,
+      aiOpencodeKey,
       aiModel,
       setAiModel,
       aiOrgEnabled,
@@ -604,6 +645,8 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
       aiGoogleKey,
       aiOpenaiKey,
       aiAnthropicKey,
+      aiOpenrouterKey,
+      aiOpencodeKey,
       aiModel,
       setAiModel,
       aiOrgEnabled,

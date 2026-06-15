@@ -238,9 +238,13 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           }`}
         aria-label="Menu principal"
       >
-        <div className={`h-16 flex items-center border-b border-[var(--color-border-subtle)] transition-all duration-300 px-5 ${sidebarCollapsed ? 'justify-center px-0' : 'justify-between'}`}>
-          <div className={`flex items-center transition-all duration-300 ${sidebarCollapsed ? 'gap-0 justify-center' : 'gap-3'}`}>
-            <BrandMark showLabel={!sidebarCollapsed} size="md" />
+        <div className={`h-16 flex items-center border-b border-[var(--color-border-subtle)] transition-all duration-300 ${sidebarCollapsed ? 'justify-center px-0' : 'justify-between gap-2 px-4'}`}>
+          <div className={`flex min-w-0 items-center transition-all duration-300 ${sidebarCollapsed ? 'justify-center' : 'flex-1 overflow-hidden'}`}>
+            <BrandMark
+              variant={sidebarCollapsed ? 'icon' : 'full'}
+              size="md"
+              className={sidebarCollapsed ? undefined : 'max-w-full'}
+            />
           </div>
 
           {/* Header Toggle Button - Only visible when expanded */}

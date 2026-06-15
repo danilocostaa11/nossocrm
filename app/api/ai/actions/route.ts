@@ -14,6 +14,12 @@
 
 import { generateObject, generateText } from 'ai';
 import { getModel, type AIProvider } from '@/lib/ai/config';
+import {
+  normalizeOrgAiProvider,
+  ORG_AI_SETTINGS_COLUMNS,
+  resolveOrgAiApiKey,
+  resolveOrgAiModelId,
+} from '@/lib/ai/orgAiCredentials';
 import { z } from 'zod';
 import { createClient, createStaticAdminClient } from '@/lib/supabase/server';
 import { isAllowedOrigin } from '@/lib/security/sameOrigin';
@@ -187,7 +193,7 @@ export async function POST(req: Request) {
   const adminClient = createStaticAdminClient();
   const { data: orgSettings, error: orgError } = await adminClient
     .from('organization_settings')
-    .select('ai_enabled, ai_provider, ai_model, ai_google_key, ai_openai_key, ai_anthropic_key')
+    .select(ORG_AI_SETTINGS_COLUMNS)
     .eq('organization_id', profile.organization_id)
     .single();
 
@@ -226,19 +232,14 @@ export async function POST(req: Request) {
   }
 
   // Frontend expects "AI consent required" as a *payload* error.
-  const provider: AIProvider = (orgSettings?.ai_provider ?? 'google') as AIProvider;
-  const apiKey: string | null =
-    provider === 'google'
-      ? (orgSettings?.ai_google_key ?? null)
-      : provider === 'openai'
-        ? (orgSettings?.ai_openai_key ?? null)
-        : (orgSettings?.ai_anthropic_key ?? null);
+  const provider = normalizeOrgAiProvider(orgSettings?.ai_provider);
+  const apiKey = resolveOrgAiApiKey(provider, orgSettings ?? {});
 
   if (orgError || !apiKey) {
     return json<AIActionResponse>({ error: 'AI consent required', consentType: 'AI_CONSENT' }, 200);
   }
 
-  const modelId = orgSettings.ai_model || '';
+  const modelId = resolveOrgAiModelId(provider, orgSettings?.ai_model);
   const model = getModel(provider, apiKey, modelId);
 
   try {

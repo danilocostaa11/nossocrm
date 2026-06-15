@@ -5,8 +5,7 @@ import { createAnthropic } from '@ai-sdk/anthropic';
 import { CRMCallOptionsSchema, type CRMCallOptions } from '@/types/ai';
 import { createCRMTools } from './tools';
 import { formatPriorityPtBr } from '@/lib/utils/priority';
-
-type AIProvider = 'google' | 'openai' | 'anthropic';
+import type { AIProvider } from '@/lib/ai/config';
 
 function sleep(ms: number) {
     return new Promise((resolve) => setTimeout(resolve, ms));
@@ -493,6 +492,36 @@ export async function createCRMAgent(
             case 'anthropic': {
                 const anthropic = createAnthropic({ apiKey });
                 return anthropic(modelId);
+            }
+            case 'openrouter': {
+                const openrouter = createOpenAI({
+                    apiKey,
+                    baseURL: 'https://openrouter.ai/api/v1',
+                    headers: {
+                        'HTTP-Referer': process.env.NEXT_PUBLIC_APP_URL || 'https://nossocrm.vercel.app',
+                        'X-Title': 'NossoCRM',
+                    },
+                    fetch: createRetryingFetch(fetch, {
+                        label: 'OpenRouter',
+                        retries: 2,
+                        baseDelayMs: 350,
+                        maxDelayMs: 2000,
+                    }),
+                });
+                return openrouter(modelId);
+            }
+            case 'opencode': {
+                const opencode = createOpenAI({
+                    apiKey,
+                    baseURL: 'https://opencode.ai/zen/v1',
+                    fetch: createRetryingFetch(fetch, {
+                        label: 'OpenCode Zen',
+                        retries: 2,
+                        baseDelayMs: 350,
+                        maxDelayMs: 2000,
+                    }),
+                });
+                return opencode(modelId);
             }
             default: {
                 // Should be unreachable due to type, but keep runtime safety.

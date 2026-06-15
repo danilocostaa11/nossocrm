@@ -3,6 +3,13 @@ import 'server-only';
 import { createClient, createStaticAdminClient } from '@/lib/supabase/server';
 import { isAllowedOrigin } from '@/lib/security/sameOrigin';
 import { getModel, type AIProvider } from '@/lib/ai/config';
+import {
+  getProviderLabel,
+  normalizeOrgAiProvider,
+  ORG_AI_SETTINGS_COLUMNS,
+  resolveOrgAiApiKey,
+  resolveOrgAiModelId,
+} from '@/lib/ai/orgAiCredentials';
 
 export type AITaskContext = {
   supabase: Awaited<ReturnType<typeof createClient>>;
@@ -96,7 +103,7 @@ export async function requireAITaskContext(
   // Segurança: chaves lidas via service-role (colunas revogadas para `authenticated`).
   const { data: orgSettings, error: orgError } = await createStaticAdminClient()
     .from('organization_settings')
-    .select('ai_enabled, ai_provider, ai_model, ai_google_key, ai_openai_key, ai_anthropic_key')
+    .select(ORG_AI_SETTINGS_COLUMNS)
     .eq('organization_id', organizationId)
     .single();
 
@@ -105,25 +112,19 @@ export async function requireAITaskContext(
     throw new AITaskHttpError(403, 'AI_DISABLED', 'IA desativada pela organização. Um admin pode ativar em Configurações → Central de I.A.');
   }
 
-  const provider: AIProvider = (orgSettings?.ai_provider ?? 'google') as AIProvider;
+  const provider = normalizeOrgAiProvider(orgSettings?.ai_provider);
 
-  const apiKey: string | null =
-    provider === 'google'
-      ? (orgSettings?.ai_google_key ?? null)
-      : provider === 'openai'
-        ? (orgSettings?.ai_openai_key ?? null)
-        : (orgSettings?.ai_anthropic_key ?? null);
+  const apiKey = resolveOrgAiApiKey(provider, orgSettings ?? {});
 
   if (orgError || !apiKey) {
-    const providerLabel = provider === 'google' ? 'Google Gemini' : provider === 'openai' ? 'OpenAI' : 'Anthropic';
     throw new AITaskHttpError(
       400,
       'AI_KEY_NOT_CONFIGURED',
-      `API key não configurada para ${providerLabel}. Configure em Configurações → Inteligência Artificial.`
+      `API key não configurada para ${getProviderLabel(provider)}. Configure em Configurações → Inteligência Artificial.`
     );
   }
 
-  const modelId = orgSettings?.ai_model || '';
+  const modelId = resolveOrgAiModelId(provider, orgSettings?.ai_model);
   const model = getModel(provider, apiKey, modelId);
 
   return {

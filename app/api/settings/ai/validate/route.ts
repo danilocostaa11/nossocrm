@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { validateProviderApiKey } from '@/lib/ai/validateApiKey';
+import { AI_PROVIDER_ENUM } from '@/lib/ai/providersCatalog';
 import { createClient } from '@/lib/supabase/server';
 import { isAllowedOrigin } from '@/lib/security/sameOrigin';
 
@@ -14,7 +15,7 @@ function json<T>(body: T, status = 200): Response {
 
 const ValidateApiKeySchema = z
   .object({
-    provider: z.enum(['google', 'openai', 'anthropic']),
+    provider: z.enum(AI_PROVIDER_ENUM),
     apiKey: z.string().min(10).max(500),
     model: z.string().min(1).max(200),
   })

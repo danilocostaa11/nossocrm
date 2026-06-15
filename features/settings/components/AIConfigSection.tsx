@@ -3,41 +3,14 @@ import { useCRM } from '@/context/CRMContext';
 import { Bot, Key, Cpu, CheckCircle, AlertCircle, Loader2, Save, Trash2, ChevronDown, ChevronUp, Shield } from 'lucide-react';
 import { useToast } from '@/context/ToastContext';
 import { useAuth } from '@/context/AuthContext';
-
-// Performance: keep provider/model catalog outside the component to avoid reallocations on every render.
-const AI_PROVIDERS = [
-    {
-        id: 'google',
-        name: 'Google Gemini',
-        models: [
-            { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', description: 'Recomendado - Best value', price: '$0.30 / $2.50' },
-            { id: 'gemini-2.5-flash-lite', name: 'Gemini 2.5 Flash Lite', description: 'Ultra fast', price: '$0.10 / $0.40' },
-            { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro', description: 'Thinking model', price: '$1.25–$2.50 / $10–$15' },
-            { id: 'gemini-3-pro-preview', name: 'Gemini 3 Pro (Preview)', description: 'Most intelligent', price: '$2–$4 / $12–$18' },
-        ]
-    },
-    {
-        id: 'anthropic',
-        name: 'Anthropic Claude',
-        models: [
-            { id: 'claude-sonnet-4-5', name: 'Claude Sonnet 4.5', description: 'Recomendado - Best balance', price: '$3 / $15' },
-            { id: 'claude-haiku-4-5', name: 'Claude Haiku 4.5', description: 'Fastest', price: '$1 / $5' },
-            { id: 'claude-opus-4-5', name: 'Claude Opus 4.5', description: 'Premium intelligence', price: '$5 / $25' },
-        ]
-    },
-    {
-        id: 'openai',
-        name: 'OpenAI',
-        models: [
-            { id: 'gpt-5.2', name: 'GPT-5.2 (Preview)', description: 'Preview', price: '$1.75 / $14' },
-            { id: 'gpt-5.2-pro', name: 'GPT-5.2 Pro', description: 'Premium', price: '$21 / $168' },
-            { id: 'gpt-5.2-chat-latest', name: 'GPT-5.2 Chat Latest', description: 'Latest chat', price: '$1.75 / $14' },
-            { id: 'gpt-5-mini', name: 'GPT-5 Mini', description: 'Fast & efficient', price: '$0.25 / $2' },
-            { id: 'gpt-5-nano', name: 'GPT-5 Nano', description: 'Ultra fast', price: '$0.05 / $0.40' },
-            { id: 'gpt-4o', name: 'GPT-4o', description: 'Legacy flagship', price: '$2.50 / $10' },
-        ]
-    },
-] as const;
+import {
+  AI_PROVIDERS,
+  getApiKeyPlaceholder,
+  supportsAnthropicCaching,
+  supportsThinking,
+  supportsWebSearch,
+  type AIProvider,
+} from '@/lib/ai/providersCatalog';
 
 async function validateApiKey(
     provider: string,
@@ -209,7 +182,7 @@ export const AIConfigSection: React.FC = () => {
     }, [modelSelectValue, aiModel, customModelDirty, isCatalogModel]);
 
     const handleProviderChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
-        const newProviderId = e.target.value as 'google' | 'openai' | 'anthropic';
+        const newProviderId = e.target.value as AIProvider;
         try {
             await setAiProvider(newProviderId);
 
@@ -392,7 +365,7 @@ export const AIConfigSection: React.FC = () => {
                 </div>
 
                 {/* Google Thinking Config */}
-                {aiProvider === 'google' && (
+                {supportsThinking(aiProvider) && (
                     <div className="bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-500/20 rounded-lg p-3 animate-in fade-in slide-in-from-top-2">
                         <div className="flex items-center justify-between">
                             <div>
@@ -418,7 +391,7 @@ export const AIConfigSection: React.FC = () => {
                 )}
 
                 {/* Anthropic Prompt Caching Config */}
-                {aiProvider === 'anthropic' && (
+                {supportsAnthropicCaching(aiProvider) && (
                     <div className="bg-orange-50 dark:bg-orange-900/10 border border-orange-100 dark:border-orange-500/20 rounded-lg p-3 animate-in fade-in slide-in-from-top-2">
                         <div className="flex items-center justify-between">
                             <div>
@@ -444,7 +417,7 @@ export const AIConfigSection: React.FC = () => {
                 )}
 
                 {/* Search Config (Google & Anthropic) */}
-                {(aiProvider === 'google' || aiProvider === 'anthropic') && (
+                {supportsWebSearch(aiProvider) && (
                     <div className="bg-green-50 dark:bg-green-900/10 border border-green-100 dark:border-green-500/20 rounded-lg p-3 animate-in fade-in slide-in-from-top-2">
                         <div className="flex items-center justify-between">
                             <div>
@@ -480,7 +453,7 @@ export const AIConfigSection: React.FC = () => {
                                 type="password"
                                 value={localApiKey}
                                 onChange={(e) => handleKeyChange(e.target.value)}
-                                placeholder={`Cole sua chave ${aiProvider === 'google' ? 'AIza...' : 'sk-...'}`}
+                                placeholder={getApiKeyPlaceholder(aiProvider)}
                                 className={`w-full bg-slate-50 dark:bg-slate-800 border rounded-lg px-3 py-2 text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none transition-all font-mono ${validationStatus === 'invalid'
                                         ? 'border-red-300 dark:border-red-500/50'
                                         : validationStatus === 'valid'

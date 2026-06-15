@@ -53,7 +53,7 @@ export default function LoginPage() {
 
             <div className="max-w-md w-full relative z-10 px-4">
                 <div className="flex justify-center mb-6">
-                    <BrandMark showLabel size="lg" />
+                    <BrandMark variant="full" size="lg" />
                 </div>
                 <div className="text-center mb-8">
                     <h1 className="text-4xl font-bold text-white font-display tracking-tight mb-2">
