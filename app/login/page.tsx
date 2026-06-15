@@ -58,7 +58,7 @@ export default function LoginPage() {
                 throw new Error('Supabase não configurado. Configure as variáveis de ambiente.')
             }
 
-            const redirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent('/login/reset-password')}`
+            const redirectTo = `${window.location.origin}/auth/confirm?next=${encodeURIComponent('/login/reset-password')}`
             const { error: resetError } = await supabase.auth.resetPasswordForEmail(email.trim(), {
                 redirectTo,
             })

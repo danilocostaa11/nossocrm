@@ -1,35 +1,28 @@
-import { createClient } from '@/lib/supabase/server'
+import { type NextRequest } from 'next/server'
 import { NextResponse } from 'next/server'
+import {
+    buildRedirectUrl,
+    createAuthRouteClient,
+    redirectWithSessionCookies,
+    sanitizeNextPath,
+} from '@/lib/supabase/auth-redirect'
 
 /**
- * Função pública `GET` do projeto.
- *
- * @param {Request} request - Objeto da requisição.
- * @returns {Promise<NextResponse<unknown>>} Retorna um valor do tipo `Promise<NextResponse<unknown>>`.
+ * Callback OAuth / PKCE — troca `code` por sessão e redireciona.
  */
-export async function GET(request: Request) {
-    const { searchParams, origin } = new URL(request.url)
+export async function GET(request: NextRequest) {
+    const { searchParams } = request.nextUrl
     const code = searchParams.get('code')
-    const next = searchParams.get('next') ?? '/dashboard'
+    const next = sanitizeNextPath(searchParams.get('next'), '/dashboard')
 
     if (code) {
-        const supabase = await createClient()
+        const { supabase, applyCookies } = createAuthRouteClient(request)
         const { error } = await supabase.auth.exchangeCodeForSession(code)
 
         if (!error) {
-            const forwardedHost = request.headers.get('x-forwarded-host')
-            const isLocalEnv = process.env.NODE_ENV === 'development'
-
-            if (isLocalEnv) {
-                return NextResponse.redirect(`${origin}${next}`)
-            } else if (forwardedHost) {
-                return NextResponse.redirect(`https://${forwardedHost}${next}`)
-            } else {
-                return NextResponse.redirect(`${origin}${next}`)
-            }
+            return redirectWithSessionCookies(request, applyCookies, next)
         }
     }
 
-    // Return the user to an error page with instructions
-    return NextResponse.redirect(`${origin}/auth/auth-code-error`)
+    return NextResponse.redirect(buildRedirectUrl(request, '/auth/auth-code-error'))
 }

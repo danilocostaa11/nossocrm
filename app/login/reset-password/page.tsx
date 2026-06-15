@@ -1,6 +1,7 @@
 'use client'
 
-import React, { useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { getErrorMessage } from '@/lib/utils/errorUtils'
@@ -11,9 +12,75 @@ export default function ResetPasswordPage() {
     const [password, setPassword] = useState('')
     const [confirmPassword, setConfirmPassword] = useState('')
     const [loading, setLoading] = useState(false)
+    const [sessionLoading, setSessionLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
     const router = useRouter()
     const supabase = createClient()
+
+    useEffect(() => {
+        let cancelled = false
+
+        async function bootstrapSession() {
+            if (!supabase) {
+                if (!cancelled) {
+                    setError('Supabase não configurado. Configure as variáveis de ambiente.')
+                    setSessionLoading(false)
+                }
+                return
+            }
+
+            try {
+                const hash = window.location.hash.startsWith('#')
+                    ? window.location.hash.slice(1)
+                    : ''
+                if (hash) {
+                    const hashParams = new URLSearchParams(hash)
+                    const accessToken = hashParams.get('access_token')
+                    const refreshToken = hashParams.get('refresh_token')
+                    const type = hashParams.get('type')
+
+                    if (accessToken && refreshToken && type === 'recovery') {
+                        const { error: sessionError } = await supabase.auth.setSession({
+                            access_token: accessToken,
+                            refresh_token: refreshToken,
+                        })
+                        if (sessionError) throw sessionError
+                        window.history.replaceState(null, '', window.location.pathname)
+                    }
+                }
+
+                const queryParams = new URLSearchParams(window.location.search)
+                const code = queryParams.get('code')
+                if (code) {
+                    const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
+                    if (exchangeError) throw exchangeError
+                    window.history.replaceState(null, '', window.location.pathname)
+                }
+
+                const {
+                    data: { user },
+                } = await supabase.auth.getUser()
+
+                if (!user) {
+                    throw new Error('Link inválido ou expirado. Solicite um novo e-mail de recuperação.')
+                }
+            } catch (err) {
+                if (!cancelled) {
+                    setError(getErrorMessage(err))
+                }
+            } finally {
+                if (!cancelled) {
+                    setSessionLoading(false)
+                }
+            }
+        }
+
+        void bootstrapSession()
+
+        return () => {
+            cancelled = true
+        }
+    }, [supabase])
 
     const passwordRequirements = useMemo(
         () => ({
@@ -59,6 +126,37 @@ export default function ResetPasswordPage() {
         } finally {
             setLoading(false)
         }
+    }
+
+    if (sessionLoading) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-dark-bg">
+                <Loader2 className="h-8 w-8 animate-spin text-primary-500" aria-label="Validando link" />
+            </div>
+        )
+    }
+
+    if (error && !password) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-dark-bg relative overflow-hidden px-4">
+                <div className="max-w-md w-full text-center">
+                    <div className="flex justify-center mb-6">
+                        <BrandMark variant="full" size="lg" />
+                    </div>
+                    <div className="bg-dark-card border border-white/10 rounded-2xl shadow-xl p-8 backdrop-blur-sm">
+                        <p className="text-red-400 text-sm mb-6" role="alert">
+                            {error}
+                        </p>
+                        <Link
+                            href="/login"
+                            className="inline-flex items-center justify-center w-full py-3 px-4 rounded-xl text-sm font-bold text-white bg-primary-600 hover:bg-primary-500 transition-colors"
+                        >
+                            Voltar para o login
+                        </Link>
+                    </div>
+                </div>
+            </div>
+        )
     }
 
     return (
