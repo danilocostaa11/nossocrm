@@ -5,6 +5,7 @@ type MockUser = { id: string }
 const mocks = vi.hoisted(() => {
   const state = {
     currentUser: null as MockUser | null,
+    hasActiveAccess: true,
   }
 
   const nextResponseMock = {
@@ -26,6 +27,13 @@ const mocks = vi.hoisted(() => {
       auth: {
         getUser: vi.fn(async () => ({ data: { user: state.currentUser } })),
       },
+      rpc: vi.fn(async (name: string) => {
+        if (name === 'is_instance_initialized') return { data: true, error: null }
+        if (name === 'current_user_has_active_access') {
+          return { data: state.hasActiveAccess, error: null }
+        }
+        return { data: null, error: null }
+      }),
     })),
   }
 
@@ -73,6 +81,7 @@ function makeRequest(pathname: string) {
 beforeEach(() => {
   vi.clearAllMocks()
   mocks.state.currentUser = null
+  mocks.state.hasActiveAccess = true
 
   vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', 'http://example.supabase.local')
   vi.stubEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY', 'anon-key')
@@ -151,5 +160,18 @@ describe('updateSession (Proxy/Supabase)', () => {
 
     expect(mocks.nextResponseMock.redirect).not.toHaveBeenCalled()
     expect(res).toMatchObject({ kind: 'next' })
+  })
+
+  it('redireciona usuário autenticado com acesso expirado para /access-expired', async () => {
+    mocks.state.currentUser = { id: 'user-1' }
+    mocks.state.hasActiveAccess = false
+    const req = makeRequest('/dashboard')
+
+    const res = await updateSession(req)
+
+    expect(mocks.nextResponseMock.redirect).toHaveBeenCalledTimes(1)
+    const [urlArg] = mocks.nextResponseMock.redirect.mock.calls[0]
+    expect(urlArg).toMatchObject({ pathname: '/access-expired' })
+    expect(res).toMatchObject({ kind: 'redirect' })
   })
 })

@@ -41,7 +41,7 @@ export async function POST(req: Request) {
   const { data: invite, error: inviteError } = await admin
     .from('organization_invites')
     // Performance: fetch only what we need (keeps payload small and avoids extra parsing).
-    .select('id, token, email, role, expires_at, used_at, organization_id')
+    .select('id, token, email, role, expires_at, used_at, organization_id, access_days')
     .eq('token', token)
     .is('used_at', null)
     .single();
@@ -76,6 +76,9 @@ export async function POST(req: Request) {
   const userId = authData.user.id;
 
   const displayName = name || email.split('@')[0];
+  const accessExpiresAt = invite.access_days
+    ? new Date(Date.now() + invite.access_days * 24 * 60 * 60 * 1000).toISOString()
+    : null;
 
   const { error: profileError } = await admin
     .from('profiles')
@@ -87,6 +90,7 @@ export async function POST(req: Request) {
         first_name: displayName,
         organization_id: invite.organization_id,
         role: invite.role,
+        access_expires_at: accessExpiresAt,
         updated_at: nowIso,
       },
       { onConflict: 'id' }

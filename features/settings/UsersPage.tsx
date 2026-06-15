@@ -11,7 +11,8 @@ interface Profile {
     role: string;
     organization_id: string;
     created_at: string;
-    status: 'active' | 'pending';
+    status: 'active' | 'pending' | 'expired';
+    access_expires_at?: string | null;
     invited_at?: string;
     confirmed_at?: string;
     last_sign_in_at?: string;
@@ -58,6 +59,7 @@ export const UsersPage: React.FC = () => {
     const [userToDelete, setUserToDelete] = useState<Profile | null>(null);
     const [activeInvites, setActiveInvites] = useState<any[]>([]);
     const [expirationDays, setExpirationDays] = useState<number | null>(7); // 7 days default, null = never
+    const [accessDays, setAccessDays] = useState<number | null>(10);
 
     const sb = supabase;
 
@@ -121,6 +123,7 @@ export const UsersPage: React.FC = () => {
         setError(null);
         setNewUserRole('vendedor');
         setExpirationDays(7);
+        setAccessDays(10);
     }, []);
 
     useEffect(() => {
@@ -167,6 +170,7 @@ export const UsersPage: React.FC = () => {
                 body: JSON.stringify({
                     role: newUserRole,
                     expiresAt,
+                    accessDays,
                 }),
             });
 
@@ -338,6 +342,12 @@ export const UsersPage: React.FC = () => {
                                                 Pendente
                                             </span>
                                         )}
+                                        {user.status === 'expired' && (
+                                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300">
+                                                <X className="h-3 w-3" />
+                                                Expirado
+                                            </span>
+                                        )}
                                     </div>
                                     <div className="flex items-center gap-3 mt-1.5">
                                         <span className={`inline-flex items-center gap-1.5 text-sm ${user.role === 'admin'
@@ -360,6 +370,8 @@ export const UsersPage: React.FC = () => {
                                         <span className="text-sm text-slate-400 dark:text-slate-500">
                                             {user.status === 'pending'
                                                 ? `Convidado ${new Date(user.invited_at || user.created_at).toLocaleDateString('pt-BR', { day: 'numeric', month: 'short' })}`
+                                                : user.access_expires_at
+                                                    ? `Acesso até ${new Date(user.access_expires_at).toLocaleDateString('pt-BR', { day: 'numeric', month: 'short', year: 'numeric' })}`
                                                 : `Desde ${new Date(user.created_at).toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' })}`
                                             }
                                         </span>
@@ -468,6 +480,11 @@ export const UsersPage: React.FC = () => {
                                                                 : 'Nunca expira'
                                                             }
                                                         </span>
+                                                        {invite.access_days && (
+                                                            <span className="text-xs text-slate-400">
+                                                                Conta: {invite.access_days} dias
+                                                            </span>
+                                                        )}
                                                     </div>
                                                     <code className="block text-xs text-slate-600 dark:text-slate-300 truncate">
                                                         ...{invite.token.slice(-8)}
@@ -550,7 +567,7 @@ export const UsersPage: React.FC = () => {
                                 {/* Expiration Selection */}
                                 <div>
                                     <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-3">
-                                        Expiração
+                                        Validade do link
                                     </label>
                                     <div className="grid grid-cols-3 gap-3">
                                         {[
@@ -563,6 +580,31 @@ export const UsersPage: React.FC = () => {
                                                 type="button"
                                                 onClick={() => setExpirationDays(opt.value)}
                                                 className={`py-2 px-3 rounded-lg text-sm font-medium border transition-all ${expirationDays === opt.value
+                                                    ? 'bg-slate-800 text-white border-slate-800 dark:bg-white dark:text-slate-900 dark:border-white'
+                                                    : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700'
+                                                    }`}
+                                            >
+                                                {opt.label}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-3">
+                                        Validade da conta após aceitar
+                                    </label>
+                                    <div className="grid grid-cols-3 gap-3">
+                                        {[
+                                            { label: '10 dias', value: 10 },
+                                            { label: '30 dias', value: 30 },
+                                            { label: 'Sem limite', value: null }
+                                        ].map((opt) => (
+                                            <button
+                                                key={opt.label}
+                                                type="button"
+                                                onClick={() => setAccessDays(opt.value)}
+                                                className={`py-2 px-3 rounded-lg text-sm font-medium border transition-all ${accessDays === opt.value
                                                     ? 'bg-slate-800 text-white border-slate-800 dark:bg-white dark:text-slate-900 dark:border-white'
                                                     : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700'
                                                     }`}

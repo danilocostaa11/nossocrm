@@ -15,6 +15,7 @@ const CreateInviteSchema = z
   .object({
     role: z.enum(['admin', 'vendedor']).default('vendedor'),
     expiresAt: z.union([z.string().datetime(), z.null()]).optional(),
+    accessDays: z.union([z.number().int().min(1).max(365), z.null()]).optional(),
     email: z.string().email().optional(),
   })
   .strict();
@@ -44,7 +45,7 @@ export async function GET() {
   // Return only active (not used) invites, and let UI decide how to show expiration.
   const { data: invites, error } = await supabase
     .from('organization_invites')
-    .select('id, token, role, email, created_at, expires_at, used_at, created_by')
+    .select('id, token, role, email, created_at, expires_at, used_at, created_by, access_days')
     .eq('organization_id', me.organization_id)
     .is('used_at', null)
     .limit(200)
@@ -89,6 +90,7 @@ export async function POST(req: Request) {
   }
 
   const expiresAt = parsed.data.expiresAt ?? null;
+  const accessDays = parsed.data.accessDays ?? null;
 
   const { data: invite, error } = await supabase
     .from('organization_invites')
@@ -97,9 +99,10 @@ export async function POST(req: Request) {
       role: parsed.data.role as Role,
       email: parsed.data.email ?? null,
       expires_at: expiresAt,
+      access_days: accessDays,
       created_by: me.id,
     })
-    .select('id, token, role, email, created_at, expires_at, used_at, created_by')
+    .select('id, token, role, email, created_at, expires_at, used_at, created_by, access_days')
     .single();
 
   if (error) {

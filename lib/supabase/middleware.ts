@@ -86,12 +86,26 @@ export async function updateSession(request: NextRequest) {
 
     // Protected routes - redirect to login if not authenticated
     const isAuthRoute = pathname.startsWith('/login') || pathname.startsWith('/auth')
-    const isPublicRoute = pathname === '/' || pathname.startsWith('/join') || isSetupRoute || isInstallRoute
+    const isAccessExpiredRoute = pathname === '/access-expired'
+    const isPublicRoute = pathname === '/' || pathname.startsWith('/join') || isSetupRoute || isInstallRoute || isAccessExpiredRoute
 
     if (!user && !isAuthRoute && !isPublicRoute) {
         const url = request.nextUrl.clone()
         url.pathname = '/login'
         return NextResponse.redirect(url)
+    }
+
+    if (user) {
+        try {
+            const { data: hasActiveAccess, error: accessError } = await supabase.rpc('current_user_has_active_access')
+            if (!accessError && hasActiveAccess === false && !isAccessExpiredRoute) {
+                const url = request.nextUrl.clone()
+                url.pathname = '/access-expired'
+                return NextResponse.redirect(url)
+            }
+        } catch {
+            // Se a RPC ainda não existir em um ambiente local antigo, não bloqueia navegação.
+        }
     }
 
     // Redirect authenticated users away from login (exceto redefinição de senha)

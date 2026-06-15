@@ -26,7 +26,7 @@ export async function GET(req: Request) {
 
   const { data: invite, error } = await admin
     .from('organization_invites')
-    .select('token, email, role, expires_at, used_at')
+    .select('token, email, role, expires_at, used_at, access_days')
     .eq('token', normalizedToken)
     .is('used_at', null)
     .maybeSingle();
@@ -71,6 +71,7 @@ export async function GET(req: Request) {
       email: invite.email,
       role: invite.role,
       expires_at: invite.expires_at,
+      access_days: invite.access_days,
     },
   });
 }
