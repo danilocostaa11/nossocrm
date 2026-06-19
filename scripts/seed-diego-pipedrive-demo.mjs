@@ -89,7 +89,7 @@ async function resolveOrgAndOwner(sb) {
 }
 
 async function ensureBoard(sb, orgId, ownerId) {
-  let board = await maybeSingle(
+  const board = await maybeSingle(
     sb.from('boards').select('*').eq('organization_id', orgId).eq('key', BOARD_KEY).is('deleted_at', null),
     'select board'
   );

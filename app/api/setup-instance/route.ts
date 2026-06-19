@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { createStaticAdminClient } from '@/lib/supabase/server';
 import { isAllowedOrigin } from '@/lib/security/sameOrigin';
+import { getDefaultTrialEndsAt } from '@/lib/billing/license';
 
 function json<T>(body: T, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -50,6 +51,18 @@ export async function POST(req: Request) {
     .single();
 
   if (orgError) return json({ error: orgError.message }, 500);
+
+  await admin
+    .from('organization_licenses')
+    .upsert(
+      {
+        organization_id: organization.id,
+        status: 'trial',
+        trial_ends_at: getDefaultTrialEndsAt(),
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: 'organization_id' }
+    );
 
   const { data: userData, error: userError } = await admin.auth.admin.createUser({
     email,

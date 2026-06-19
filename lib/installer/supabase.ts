@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { getDefaultTrialEndsAt } from '@/lib/billing/license';
 
 type BootstrapInput = {
   supabaseUrl: string;
@@ -82,6 +83,22 @@ export async function bootstrapInstance({
 
     organizationId = organization.id;
     createdOrg = true;
+  }
+
+  const { error: licenseError } = await admin
+    .from('organization_licenses')
+    .upsert(
+      {
+        organization_id: organizationId,
+        status: 'trial',
+        trial_ends_at: getDefaultTrialEndsAt(),
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: 'organization_id' }
+    );
+
+  if (licenseError) {
+    return { ok: false, error: licenseError.message };
   }
 
   // 2) Auth user (cria ou atualiza)

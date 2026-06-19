@@ -26,7 +26,7 @@ export default function AccessExpiredPage() {
                 </div>
                 <h1 className="text-2xl font-bold text-white">Acesso expirado</h1>
                 <p className="mt-3 text-sm leading-6 text-slate-300">
-                    O período gratuito desta conta terminou. Fale com o responsável pelo CRM para renovar o acesso.
+                    O período gratuito ou a licença desta instalação terminou. Fale com o responsável pelo CRM para renovar o acesso.
                 </p>
                 <button
                     type="button"
