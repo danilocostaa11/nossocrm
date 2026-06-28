@@ -1,5 +1,15 @@
 # Demo seeds
 
+## Guia de onboarding (Diego)
+
+PDF para enviar ao cliente: `docs/guia-inicio-rapido-yumia.pdf` (5 páginas — contatos, negócios, atividades).
+
+Regenerar após editar o script:
+
+```bash
+npm run docs:guide-pdf
+```
+
 ## Diego Doretto / Pipedrive
 
 O seed `scripts/seed-diego-pipedrive-demo.mjs` reproduz no Supabase os dados configurados para o teste do Diego:

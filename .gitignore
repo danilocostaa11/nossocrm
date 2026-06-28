@@ -78,7 +78,8 @@ docs/stories/
 docs/security/
 
 # Dev/debug scripts (not needed for app to run)
-scripts/
+scripts/*
+!scripts/generate-yumia-guide-pdf.mjs
 
 # Test documentation (test code stays, docs are local)
 test/*.md
@@ -95,4 +96,3 @@ test/*.md
 .context/harness/replays/
 .context/harness/datasets/
 .context/**/archive/
-

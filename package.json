@@ -14,7 +14,8 @@
     "test": "vitest",
     "test:run": "vitest run",
     "smoke:integrations": "node scripts/smoke-integrations.mjs",
-    "db:apply-openrouter": "node scripts/apply-openrouter-columns.mjs"
+    "db:apply-openrouter": "node scripts/apply-openrouter-columns.mjs",
+    "docs:guide-pdf": "node scripts/generate-yumia-guide-pdf.mjs"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "3.0.1",
